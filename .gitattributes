@@ -1,0 +1,3 @@
+# One line ending for every text file, on every platform: LF. With this in the
+# repo no tool can leave a file half-converted (mixed CRLF/LF) at commit time.
+* text=auto eol=lf
