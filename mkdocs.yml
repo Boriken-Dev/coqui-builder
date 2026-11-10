@@ -27,6 +27,7 @@ theme:
 
 nav:
   - Home: index.md
+  - Migrating: migrating.md
   - Rust API: https://boriken-dev.github.io/coqui-builder/rust/index.html
 
 markdown_extensions:

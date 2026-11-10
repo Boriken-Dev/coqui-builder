@@ -80,3 +80,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `deny_unknown_fields`, `tag`, `untagged`, `other`, `as_text`, `with`, `#[schema(..)]`), plus
   `none` (the text that writes the `None` of an `Option`) and `#[builder(stricter, setter,
   crate)]`.
+- A migration guide (`docs/migrating.md`): from derives that write a value and a schema to
+  `Describe`, from a hand-written builder to `#[derive(Builder)]` and `Configured`, and from a
+  hand-kept non-default report and a `Duration::MAX` that waits forever to `non_defaults` and
+  `none = "never"`. The test `settings_shapes` holds settings types of the shapes the guide covers
+  (lists, optional timeouts, units, groups, a flag or a table, byte strings, bounds), with
+  builders over several of them.
