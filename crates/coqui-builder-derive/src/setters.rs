@@ -63,6 +63,38 @@ pub(crate) struct Setters {
     pub(crate) names: Vec<String>,
 }
 
+/// Whether `ty` is written as a primitive scalar: a single-segment path with no generics, so a
+/// literal infers against it. An alias of one is not recognised.
+pub(crate) fn is_primitive_scalar(ty: &syn::Type) -> bool {
+    const SCALARS: [&str; 16] = [
+        "bool", "char", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64",
+        "i128", "isize", "f32", "f64",
+    ];
+    let ty = match ty {
+        syn::Type::Group(group) => &*group.elem,
+        syn::Type::Paren(paren) => &*paren.elem,
+        other => other,
+    };
+    let syn::Type::Path(path) = ty else {
+        return false;
+    };
+    path.qself.is_none()
+        && path.path.leading_colon.is_none()
+        && path.path.segments.len() == 1
+        && path.path.segments[0].arguments.is_empty()
+        && SCALARS.iter().any(|name| path.path.is_ident(name))
+}
+
+/// The type a setter's argument is written with: a primitive scalar itself, any other type
+/// as `impl Into<T>`.
+pub(crate) fn argument(ty: &syn::Type) -> TokenStream {
+    if is_primitive_scalar(ty) {
+        quote!(#ty)
+    } else {
+        quote!(impl ::core::convert::Into<#ty>)
+    }
+}
+
 pub(crate) fn write(
     ctx: &Ctx<'_>,
     generics: &Generics,
@@ -84,16 +116,18 @@ pub(crate) fn write(
 
     let declarations = methods.iter().map(|(method, plan)| {
         let ty = &plan.ty;
+        let arg = argument(ty);
         let docs = docs(&plan.docs, &plan.key);
         quote! {
             #(#docs)*
-            fn #method(self, value: impl ::core::convert::Into<#ty>) -> Self;
+            fn #method(self, value: #arg) -> Self;
         }
     });
     let definitions = methods.iter().map(|(method, plan)| {
         let (ty, ident) = (&plan.ty, &plan.ident);
+        let arg = argument(ty);
         quote! {
-            fn #method(mut self, value: impl ::core::convert::Into<#ty>) -> Self {
+            fn #method(mut self, value: #arg) -> Self {
                 let __v: #ty = ::core::convert::Into::into(value);
                 let __fill = __cb::Partial::__fill_mut(
                     <Self as __cb::builder::Holds<#name #ty_g>>::partial_mut(&mut self),

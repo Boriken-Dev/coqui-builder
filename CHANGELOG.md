@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- A setter for a field written as a primitive scalar (`bool`, `char`, the integers, `f32`, `f64`), on the
+  settings and on a builder input, takes that type itself, so `.max(8)` infers. Every other type keeps
+  `impl Into<T>`. A call that passed another type through `Into` (a `u8` into a `u16` field) must convert it.
+
 ### Added
 
 - `Datum`, a type name and a text (`u32(64)`, printed `String(***)` for a secret), and `Shown`

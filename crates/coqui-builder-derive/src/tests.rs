@@ -438,3 +438,73 @@ fn a_setter_name_no_method_can_have_is_an_error_not_a_panic() {
     // A keyword is a method by its raw name.
     assert!(expand_text("struct S { #[builder(setter = \"type\")] a: u8 }").is_ok());
 }
+
+#[test]
+fn a_setter_takes_a_primitive_scalar_as_itself_and_anything_else_through_into() {
+    let mut fields = String::new();
+    let mut expected = Vec::new();
+    let scalars = [
+        "bool", "char", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64",
+        "i128", "isize", "f32", "f64",
+    ];
+    for (n, ty) in scalars.iter().enumerate() {
+        fields.push_str(&format!("s{n}: {ty}, "));
+        expected.push((format!("s{n}"), format!("value:{ty})->Self")));
+    }
+    let others = [
+        "Option<u32>",
+        "String",
+        "Duration",
+        "Vec<u8>",
+        "Alias",
+        "std::primitive::u32",
+        "::core::primitive::u32",
+        "Wrapper<u8>",
+        "&'static u8",
+    ];
+    for (n, ty) in others.iter().enumerate() {
+        fields.push_str(&format!("o{n}: {ty}, "));
+        expected.push((
+            format!("o{n}"),
+            format!("value:impl::core::convert::Into<{}>)", squeezed(ty)),
+        ));
+    }
+    let text = squeezed(
+        &expand_text(&format!("struct S {{ {fields} }}"))
+            .expect("expands")
+            .to_string(),
+    );
+    for (name, want) in expected {
+        assert!(
+            text.contains(&format!("fn{name}(self,{want}")),
+            "{name}: {want}: {text}"
+        );
+    }
+}
+
+#[test]
+fn an_input_setter_takes_a_primitive_scalar_as_itself() {
+    let text = builder_text(
+        "#[builder(build = X)] struct P { settings: T, #[builder(input)] n: u32, #[builder(input)] f: f32,          #[builder(input)] on: bool, #[builder(input)] some: Option<u32>, #[builder(input)] big: Alias,          #[builder(input)] text: String }",
+    );
+    assert!(!text.contains("compile_error"), "{text}");
+    for name in ["n:u32", "f:f32", "on:bool"] {
+        let (field, ty) = name.split_once(':').unwrap();
+        assert!(
+            text.contains(&format!("fn{field}(mutself,value:{ty})->Self")),
+            "{field}: {text}"
+        );
+    }
+    for (name, into) in [
+        ("some", "Into<u32>"),
+        ("big", "Into<Alias>"),
+        ("text", "Into<String>"),
+    ] {
+        assert!(
+            text.contains(&format!(
+                "fn{name}(mutself,value:impl::core::convert::{into})"
+            )),
+            "{name}: {text}"
+        );
+    }
+}

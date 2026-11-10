@@ -311,8 +311,12 @@ fn try_expand(tokens: TokenStream) -> syn::Result<TokenStream> {
             .clone()
             .unwrap_or_else(|| format!("Sets the input `{}`; the last call wins.", input.name));
         // A type parameter taken through `impl Into<C>` could never be inferred from the
-        // argument, so an input that is exactly one takes it as it is.
-        if input.optional.is_none() && is_type_parameter(&input.ty, &ast.generics) {
+        // argument, so an input that is exactly one takes it as it is; so does a primitive
+        // scalar, so that a literal infers. An `Option<u32>` input takes `impl Into<u32>`.
+        if input.optional.is_none()
+            && (is_type_parameter(&input.ty, &ast.generics)
+                || crate::setters::is_primitive_scalar(&input.ty))
+        {
             return quote! {
                 #[doc = #doc]
                 pub fn #name(mut self, value: #value_ty) -> Self {

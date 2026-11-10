@@ -229,8 +229,9 @@ omitted is left out, and only names are written. `BuildError::source` is the con
 source, so a chain does not print the error twice.
 
 **Settings setters.** `#[derive(Describe)]` on a struct writes `pub trait <Name>Setters` (the
-struct's visibility): one `fn <setter>(self, value: impl Into<FieldType>) -> Self` per setting,
-the last call winning, implemented for every `B: Holds<Name>`. Import it to call them, from any
+struct's visibility): one `fn <setter>(self, value: impl Into<FieldType>) -> Self` per setting (a field written as a
+primitive scalar, `bool`, `char`, the integers, `f32`, `f64`, takes `FieldType` itself so a literal
+infers; an alias of one keeps `impl Into`), the last call winning, implemented for every `B: Holds<Name>`. Import it to call them, from any
 crate (a settings crate re-exports it in its prelude). A setter that is `build`, `parts`,
 `fill`, `fill_from`, `builder`, `new`, `configured`, `non_defaults`, `partial_mut`, `into` or `try_into`
 is refused, since an inherent method silently wins over a trait method; rename it with `#[builder(setter = "..")]`
@@ -245,7 +246,8 @@ generic and `entry = "new"`):
 ```rust
 X::builder() / XBuilder::new()                          // nothing set
 fn <input>(self, impl Into<I>) -> Self                  // `Option<J>` inputs take impl Into<J>; an input
-                                                        // that is a type parameter C takes `C` itself
+                                                        // that is a type parameter C or a primitive scalar
+                                                        // takes its type itself
 fn fill(self, Partial<S>) -> Self                       // Partial::overlay: the last write wins
 fn fill_from(self, &mut impl Source) -> Result<Self, FillError>   // drops `Unknown`
 fn build(self) -> Result<X, Missing>                    // fallible: Result<X, BuildError<E>>

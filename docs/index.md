@@ -80,7 +80,7 @@ struct ServerParts {
 
 let server = Server::builder()
     .fill(file)           // layers: a Partial, or fill_from(&mut source)
-    .port(9000u16)        // a typed setter of the settings
+    .port(9000)           // a typed setter of the settings; a primitive takes a bare literal
     .identity(identity)   // an input
     .build()?;            // names every missing setting and input at once
 ```

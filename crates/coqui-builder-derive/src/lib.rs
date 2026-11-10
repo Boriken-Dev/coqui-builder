@@ -91,7 +91,8 @@ pub fn describe(input: TokenStream) -> TokenStream {
 /// An input's setter takes `impl Into<T>` for its type `T`, except an input whose type is
 /// exactly one of the parts struct's type parameters: that setter takes the parameter itself,
 /// so setting it infers the parameter and needs no turbofish (an `Option<C>`, a `Vec<C>` or a
-/// `C::Item` still takes `impl Into<..>`). The builder
+/// `C::Item` still takes `impl Into<..>`). An input written as a primitive scalar (`bool`, `char`,
+/// an integer, `f32`, `f64`) takes it as itself too, so a literal infers. The builder
 /// also has `parts()`, which gives what `build` converts, for a terminal written by hand.
 #[proc_macro_derive(Builder, attributes(builder))]
 pub fn builder(input: TokenStream) -> TokenStream {

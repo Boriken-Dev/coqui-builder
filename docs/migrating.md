@@ -183,7 +183,10 @@ impl TryFrom<ServerParts<'_>> for Built<ServerConfig> {
 
 - **Settings** are the one `Describe` field; their setters come from `<Name>Setters`, a trait the
   settings type's derive writes (`TlsSettingsSetters`), which the builder's user imports. A
-  setter takes `impl Into<FieldType>`; an `Option` setting takes the inner value or an `Option`.
+  setter takes `impl Into<FieldType>`; an `Option` setting takes the inner value or an `Option`. A
+  setting (or input) written as a primitive scalar (`bool`, `char`, the integers, `f32`, `f64`)
+  takes that type itself, so `.max(8)` needs no suffix; a caller that passed another type through
+  `Into` (a `u8` into a `u16` field) now converts it first.
 - **Inputs** are every other field, marked `#[builder(input)]`: a value with no text form,
   a borrowed value, code. An input of type `Option<J>` is optional; every other input is required
   and `build` names it if it is missing, together with every missing setting.

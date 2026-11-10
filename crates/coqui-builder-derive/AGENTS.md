@@ -112,7 +112,10 @@ Contracts:
 A struct of named fields also gets, beside the struct and with its visibility,
 `pub trait <Name>Setters<..>: Holds<Name<..>> + Sized` with one method per setting that is not
 `#[map(skip)]`, named by the field or `#[builder(setter = "..")]` (a keyword is written raw),
-`fn name(self, value: impl Into<FieldType>) -> Self`, carrying the field's doc comment. A
+`fn name(self, value: impl Into<FieldType>) -> Self`, carrying the field's doc comment. A field
+written as a primitive scalar (`bool`, `char`, `u8`..`u128`, `usize`, `i8`..`i128`, `isize`, `f32`,
+`f64`; one segment, no generics) takes `FieldType` itself, so `.max(8)` infers; an alias, a
+path such as `std::primitive::u32`, an `Option<u32>` and every other type keep `impl Into`. A
 `#[map(flatten)]` field has one setter taking its whole type. `impl<B: Holds<Name>> <Name>Setters
 for B` is written beside the other impls. Two settings with one setter name are refused. A field
 behind a false `cfg` has none.
@@ -137,7 +140,8 @@ struct `#[builder(build = X[, name = ".."][, fallible][, entry = "new"][, crate 
 - An input whose type is exactly one of the parts struct's type parameters takes that type itself
   (`fn channel(self, value: C)`), so setting it infers the parameter; every other input takes
   `impl Into<T>`, an `Option<C>`, a `Vec<C>` and a `C::Item` included, and those still need the
-  parameters named when nothing else fixes them.
+  parameters named when nothing else fixes them. An input written as a primitive scalar takes it
+  as itself too (the list is the settings setters').
 - An input of type `Option<J>` takes `impl Into<J>` and is never missing; any other input is
   named in `Missing::inputs` while unset.
 - An input setter that is one of `build`, `parts`, `fill`, `fill_from`, `builder`, `new`,
