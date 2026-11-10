@@ -115,3 +115,7 @@ required-features = ["derive", "std"]
 [[test]]
 name = "builder"
 required-features = ["derive", "std"]
+
+[[test]]
+name = "configured"
+required-features = ["derive"]

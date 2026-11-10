@@ -96,8 +96,12 @@ impl fmt::Display for NonDefault {
 
 /// Every setting of `value` that differs from its default.
 pub fn non_defaults<T: Describe + Inspect>(value: &T) -> Vec<NonDefault> {
-    let description = T::description();
-    let (report, defaults) = walk(&description, value, None);
+    listed(&T::description(), value)
+}
+
+/// Every setting of `value` that differs from the defaults `description` states.
+pub(crate) fn listed(description: &Description, value: &dyn Inspect) -> Vec<NonDefault> {
+    let (report, defaults) = walk(description, value, None);
     report
         .findings()
         .iter()

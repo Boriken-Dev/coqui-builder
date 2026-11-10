@@ -52,6 +52,7 @@
 
 mod attrs;
 mod builder;
+mod configured;
 mod enums;
 mod fields;
 mod rename;
@@ -82,6 +83,14 @@ pub fn describe(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(Builder, attributes(builder))]
 pub fn builder(input: TokenStream) -> TokenStream {
     builder::expand(input.into()).into()
+}
+
+/// Makes a built type `Configured`: its one `#[configured]` field holds the settings.
+///
+/// Also writes `impl Check<Self> for Profile` and an inherent `non_defaults`.
+#[proc_macro_derive(Configured, attributes(configured))]
+pub fn configured(input: TokenStream) -> TokenStream {
+    configured::expand(input.into()).into()
 }
 
 /// Makes a type a `Leaf`, one setting that is one text: see the crate documentation of

@@ -7,7 +7,11 @@
 
 use core::fmt;
 
+use alloc::vec::Vec;
+
 use crate::describe::Describe;
+use crate::inspect::Inspect;
+use crate::non_default::NonDefault;
 use crate::partial::{Missing, Partial};
 
 /// A builder that holds a [`Partial`] of the settings `S`.
@@ -48,5 +52,26 @@ impl<E: core::error::Error + 'static> core::error::Error for BuildError<E> {
             BuildError::Missing(_) => None,
             BuildError::Failed(error) => error.source(),
         }
+    }
+}
+
+/// Something that holds the settings it is built from or was built from: a builder, and the
+/// value it built.
+///
+/// `#[derive(Builder)]` implements it for the builder (its view is the [`Partial`], so a key
+/// not set reads as its default), and `#[derive(Configured)]` for a built type with one
+/// `#[configured]` field. Each derive also writes `impl Check<Self> for Profile`, so a
+/// [`Profile`](crate::Profile) judges either, and an inherent `non_defaults`, so no import is
+/// needed to call it.
+pub trait Configured {
+    /// The type of the settings.
+    type Settings: Describe;
+
+    /// The settings, read through [`Inspect`].
+    fn configured(&self) -> &dyn Inspect;
+
+    /// Every setting that differs from its default.
+    fn non_defaults(&self) -> Vec<NonDefault> {
+        crate::non_default::listed(&Self::Settings::description(), self.configured())
     }
 }

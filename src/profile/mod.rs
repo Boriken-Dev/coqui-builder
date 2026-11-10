@@ -27,7 +27,7 @@ pub use describable::{ExpectFill, ProfileFill};
 pub use expect::Expect;
 
 use crate::check::Check;
-use crate::describe::Describe;
+use crate::describe::{Describe, Description};
 use crate::inspect::Inspect;
 use crate::path::{KeyPath, PathError};
 use crate::report::Report;
@@ -124,8 +124,19 @@ impl Profile {
     }
 }
 
+impl Profile {
+    /// Judges `subject` against this profile, reading its places through `description`, and
+    /// pushes a finding per expectation to `report`.
+    ///
+    /// This is [`Check::check`] for a subject that is not `Describe` itself: a builder holds
+    /// the settings it will build, and `description` is theirs.
+    pub fn judge(&self, description: &Description, subject: &dyn Inspect, report: &mut Report) {
+        compare::run(self, description, subject, report);
+    }
+}
+
 impl<T: Describe + Inspect> Check<T> for Profile {
     fn check(&self, subject: &T, report: &mut Report) {
-        compare::run(self, &T::description(), subject, report);
+        self.judge(&T::description(), subject, report);
     }
 }

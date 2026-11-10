@@ -41,10 +41,11 @@ pub mod profile;
 pub mod report;
 pub mod source;
 
+pub use builder::Configured;
 pub use check::{Check, Checks};
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
-pub use coqui_builder_derive::{Builder, Describe, Leaf};
+pub use coqui_builder_derive::{Builder, Configured, Describe, Leaf};
 pub use datum::{Datum, Shown};
 pub use describe::{Describe, Description, Leaf};
 #[cfg(feature = "std")]

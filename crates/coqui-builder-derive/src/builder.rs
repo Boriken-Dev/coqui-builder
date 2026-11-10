@@ -522,6 +522,34 @@ fn try_expand(tokens: TokenStream) -> syn::Result<TokenStream> {
         }
 
         #[automatically_derived]
+        impl #impl_g #krate::builder::Configured for #builder #ty_g #where_g {
+            type Settings = #settings_ty;
+
+            fn configured(&self) -> &dyn #krate::Inspect {
+                &self.__partial
+            }
+        }
+
+        #[automatically_derived]
+        impl #impl_g #krate::Check<#builder #ty_g> for #krate::Profile #where_g {
+            fn check(&self, subject: &#builder #ty_g, report: &mut #krate::Report) {
+                self.judge(
+                    &<#settings_ty as #krate::Describe>::description(),
+                    #krate::builder::Configured::configured(subject),
+                    report,
+                );
+            }
+        }
+
+        #[automatically_derived]
+        impl #impl_g #builder #ty_g #where_g {
+            /// Every setting that differs from its default, as the builder would build it.
+            pub fn non_defaults(&self) -> #krate::__private::Vec<#krate::NonDefault> {
+                #krate::builder::Configured::non_defaults(self)
+            }
+        }
+
+        #[automatically_derived]
         impl #impl_g #krate::builder::Holds<#settings_ty> for #builder #ty_g #where_g {
             fn partial_mut(&mut self) -> &mut #krate::Partial<#settings_ty> {
                 &mut self.__partial
