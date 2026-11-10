@@ -1,0 +1,48 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+### Added
+
+- `Datum`, a type name and a text (`u32(64)`, printed `String(***)` for a secret), and `Shown`
+  (unset, one datum or a list of them): what a finding or a non-default holds. `KeyPath` /
+  `Segment`: the path grammar `agent[1].name`, `env["a.b"]`, parsed and written so that every
+  path round-trips.
+- `Leaf`: a type that is one setting, as one text. It names its type, parses and prints its own
+  text, may declare an order and its choices, and is held to a round trip (`assert_round_trip`).
+  Implemented for `bool`, the integers up to `u128` and `i128`, `f32`, `f64`, `String`, `char`,
+  `Duration`, the `core::net` addresses and (`std`) `PathBuf`. `Codec` is the same for
+  `with` and `as_text`.
+- Durations read `30`, `0.25`, `30s`, `250ms` and `1.5h` exactly, and are written exactly as
+  seconds, else milliseconds, microseconds or nanoseconds; a negative, a non-number or anything
+  finer than a nanosecond is refused.
+- `Describe`, `Description`, `Kind`, `Field` and `Notes`: what a settings type is, as an owned
+  tree built on each call.
+- `Fill`, its slots and `Partial`: fill a type by path and text, replace a list whole with
+  `set_items`, `overlay` one over another, `clear` a key, and `build`, which names every missing
+  key at once. Bounds the description states are checked on `set`; a failed `set` leaves no
+  trace.
+- `Source`, `Entries` and `Partial::fill_from`: fill from anything that answers a text per leaf,
+  a length per list and keys per open map; keys a source holds that the description lacks are
+  returned, or refused under `deny_unknown_fields`. `Env` (`std`) reads `PREFIX_A__B` variables.
+- `Inspect`: read a key of a built value, a fill or a `Partial` as a `Datum`, and `entries`
+  (a list's length or the keys that are set).
+- `Report`, `Finding`, `Reason`, `Check` and `Checks`: findings with every secret hidden, in the
+  value and in the expectation, through list items, open-map values and arms.
+- `NonDefault`, `non_defaults` and `differences`: every setting that differs from its default or
+  from a second value, compared as typed values, never as text.
+- `Profile` and `Expect` (`Equal`, `Within`, `OneOf`, `AsStrictAs`, `NoStricterThan`, `SubsetOf`,
+  `ItemsEqual`, `Required`, `Absent`, `Arms`, `Any`), each holding texts that the field's own
+  parser reads when the profile is bound (`Profile::bind`): build one by hand, from a type's
+  defaults (`Profile::defaults`) or from a value (`Profile::against`), `merge` them, and check a
+  value. A secret is expected to be set, never to equal a copy of itself.
+- `#[derive(Describe)]` and `#[derive(Leaf)]` (feature `derive`) with the attributes of
+  guatiao's derives (`rename`, `rename_all`, `skip`, `default`, `flatten`, `transparent`,
+  `deny_unknown_fields`, `tag`, `untagged`, `other`, `as_text`, `with`, `#[schema(..)]`), plus
+  `none` (the text that writes the `None` of an `Option`) and `#[builder(stricter, setter,
+  crate)]`.
