@@ -16,6 +16,12 @@
 //! | enum with `#[map(tag = "k")]` | a group whose fields depend on the arm the tag names |
 //! | enum with `#[map(untagged)]` | text arms and at most one structured arm |
 //!
+//! `#[derive(Builder)]` writes the builder of a parts struct (one settings field, the rest
+//! `#[builder(input)]`; `build`, `name`, `fallible`, `entry` and `crate` on the struct), and
+//! `#[derive(Configured)]` the settings view of a built type (`#[configured]` on its one
+//! settings field). A struct that derives `Describe` also gets a trait of typed setters,
+//! `<Name>Setters`.
+//!
 //! The spellings are the ones `guatiao`'s derives read, so a type can move between the two;
 //! the vectors in `tests/vectors/attributes.json` hold both to the same meaning.
 //!

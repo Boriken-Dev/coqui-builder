@@ -21,6 +21,8 @@ whether a value meets what is expected, with every secret hidden. See the
   text, or from any `Source` such as the environment; the last write of a key wins, and a
   list is replaced whole.
 - **Fails once, completely** — `Partial::build` lists every key still missing, not the first.
+- **A builder from the description** — `#[derive(Builder)]` on a parts struct writes typed
+  setters, layers (`fill`), and a `build` that names every missing setting and input at once.
 - **Non-defaults as data** — `non_defaults` lists each setting that differs from its default
   as `{setting, value, default}`, each a type and its text (`u32(64)`); a secret is `String(***)`.
   Values are compared as typed values, so `30s` equals `30000ms`.
@@ -80,6 +82,52 @@ assert!(!report.is_met());
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
+## A builder
+
+A settings type is described once; a parts struct holds it beside the inputs that are no text,
+and derives the builder.
+
+```rust
+use coqui_builder::{Builder, Describe, Partial};
+
+#[derive(Describe)]
+struct ServerSettings {
+    host: String,
+    #[map(default = 8080)]
+    port: u16,
+}
+
+struct Server {
+    settings: ServerSettings,
+    identity: String,
+}
+
+#[derive(Builder)]
+#[builder(build = Server)]
+struct ServerParts {
+    settings: ServerSettings,
+    #[builder(input)]
+    identity: String,
+}
+
+impl From<ServerParts> for Server {
+    fn from(parts: ServerParts) -> Server {
+        Server { settings: parts.settings, identity: parts.identity }
+    }
+}
+
+// Layers apply in order (a file, the environment, flags, then code): the last write wins.
+let mut file = Partial::<ServerSettings>::new();
+file.set("host", "example")?;
+let server = Server::builder().fill(file).port(9000u16).identity("srv").build()?;
+assert_eq!(server.settings.port, 9000);
+
+// A build that lacks something names all of it.
+let missing = Server::builder().build().err().unwrap();
+assert_eq!(missing.to_string(), "missing settings: host; missing inputs: identity");
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
 ## API overview
 
 | Module | Purpose |
@@ -89,6 +137,7 @@ assert!(!report.is_met());
 | `path` | `KeyPath` and `Segment`: `agent[1].name` |
 | `fill` | `Fill` and the slots a partly filled type is made of |
 | `partial` | `Partial`: a type with some keys set, and `Missing` |
+| `builder` | `Holds`, `Configured`, `BuildError`: what a generated builder shares |
 | `source` | `Source`, `Entries`, `FillError`: filling from anything; `env::Env` reads variables |
 | `inspect` | `Inspect`: reading a key of a value |
 | `report` | `Report`, `Finding`, `Reason`: what a check found |

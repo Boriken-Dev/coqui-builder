@@ -101,9 +101,57 @@ Contracts:
   `from_text(&str) -> Result<T, LeafError>`; the field is a leaf of that type. It cannot use a generic parameter of the type it sits in, and is
   refused on an `Option`.
 - A setting whose setter name (the field, or `setter = ".."`) is `build`, `fill`,
-  `fill_from`, `builder`, `new`, `configured`, `non_defaults` or `partial_mut` is refused.
+  `fill_from`, `builder`, `new`, `configured`, `non_defaults`, `partial_mut`, `into` or `try_into` is refused.
 - `skip_serializing_if` and `alias` are refused: nothing is written, and a description has
   no alias.
+
+## `#[derive(Describe)]` on a struct: typed setters
+
+A struct of named fields also gets, beside the struct and with its visibility,
+`pub trait <Name>Setters<..>: Holds<Name<..>> + Sized` with one method per setting that is not
+`#[map(skip)]`, named by the field or `#[builder(setter = "..")]` (a keyword is written raw),
+`fn name(self, value: impl Into<FieldType>) -> Self`, carrying the field's doc comment. A
+`#[map(flatten)]` field has one setter taking its whole type. `impl<B: Holds<Name>> <Name>Setters
+for B` is written beside the other impls. Two settings with one setter name are refused. A field
+behind a false `cfg` has none.
+
+## `#[derive(Builder)]`
+
+```rust
+#[proc_macro_derive(Builder, attributes(builder))]
+```
+
+On a parts struct with named fields: exactly one field without `#[builder(input)]` (the
+settings, `Describe`) and any number with it (`setter = ".."` renames the method). On the
+struct `#[builder(build = X[, name = ".."][, fallible][, entry = "new"][, crate = path])]`:
+
+- `build = X` is the type the parts build, by `From<Parts> for X` or, with `fallible`,
+  `TryFrom<Parts> for X`. The builder is named `XBuilder` after the last segment of `X`, with
+  the parts struct's visibility; `name = "ServerBuilder"` names it instead and is **required**
+  when `X` has generic arguments (`Built<Config>`). A type this crate does not own needs `name`
+  (if generic) and `entry = "new"`, since an inherent `X::builder()` is E0116.
+- `entry = "new"` makes the builder with `XBuilder::new()` instead of `X::builder()`, and is
+  required when the parts struct has generic parameters or lifetimes.
+- An input of type `Option<J>` takes `impl Into<J>` and is never missing; any other input is
+  named in `Missing::inputs` while unset.
+- An input setter that is one of `build`, `fill`, `fill_from`, `builder`, `new`,
+  `configured`, `non_defaults`, `partial_mut`, `into` or `try_into` is refused; one equal to a setter of the settings
+  fails the build of the builder (E0080); two inputs with one setter are refused.
+- The builder has `fill`, `fill_from` (the `Unknown` keys are dropped), `build`, `From<Partial<S>>`,
+  `Holds<S>`, `Configured`, `Check<XBuilder> for Profile`, an inherent `non_defaults` and a
+  `Debug` that shows which inputs are set and never a value.
+- Zero or two settings fields, a missing `build`, an unknown key, a name that is no identifier
+  and a generic `X` without `name` are refused with a sentence.
+
+## `#[derive(Configured)]`
+
+```rust
+#[proc_macro_derive(Configured, attributes(configured))]
+```
+
+On a struct with exactly one `#[configured]` field (the settings, `Describe + Inspect`): writes
+`Configured` (the field is the view), `Check<Self> for Profile` and an inherent `non_defaults`.
+`#[configured(crate = path)]` on the type says where `coqui_builder` is.
 
 ## Gotchas
 

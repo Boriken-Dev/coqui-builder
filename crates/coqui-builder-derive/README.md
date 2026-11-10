@@ -44,6 +44,8 @@ struct Limits {
 | Item | Purpose |
 | --- | --- |
 | `Describe` | the derive; attributes `map`, `schema` and `builder` |
+| `Builder` | the builder of a parts struct; `#[builder(build, name, fallible, entry, crate)]`, `#[builder(input, setter)]` |
+| `Configured` | the settings view of a built type; `#[configured]` on its one settings field |
 
 ## Development
 

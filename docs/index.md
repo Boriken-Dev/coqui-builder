@@ -60,6 +60,32 @@ let profile = Profile::new().expecting("waiting", Expect::Equal("16".into()))?;
 let report = profile.verify(&limits);
 ```
 
+## A builder
+
+A parts struct holds the settings type beside the inputs that are no text, and
+`#[derive(Builder)]` writes the builder. Import the settings' setters trait
+(`<Name>Setters`, from the crate that defines the settings) to call them.
+
+```rust
+#[derive(Builder)]
+#[builder(build = Server)]
+struct ServerParts {
+    settings: ServerSettings,
+    #[builder(input)]
+    identity: Identity,
+}
+
+let server = Server::builder()
+    .fill(file)           // layers: a Partial, or fill_from(&mut source)
+    .port(9000u16)        // a typed setter of the settings
+    .identity(identity)   // an input
+    .build()?;            // names every missing setting and input at once
+```
+
+A key below the top level is set with `Partial::put("limits.total", 5u32)` through
+`partial_mut()` (a method of `coqui_builder::builder::Holds`, so import it). The built type's `Configured` view gives `non_defaults()` and lets a `Profile`
+check a builder as it checks a built value.
+
 ## A value written as text or as a table
 
 An enum marked `#[map(untagged)]` holds any number of arms that are a single value (unit names,

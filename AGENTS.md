@@ -8,7 +8,7 @@ source at <https://github.com/Boriken-Dev/coqui-builder>.
 | Feature | Adds | Default |
 | --- | --- | --- |
 | `std` | `PathBuf` and `HashMap` as settings, and `Env` | yes |
-| `derive` | `#[derive(Describe)]` and `#[derive(Leaf)]` (`coqui-builder-derive`: `syn`, `quote`, `proc-macro2`) | no |
+| `derive` | `#[derive(Describe)]`, `#[derive(Leaf)]`, `#[derive(Builder)]` and `#[derive(Configured)]` (`coqui-builder-derive`: `syn`, `quote`, `proc-macro2`) | no |
 
 MSRV 1.89, edition 2024. `#![no_std]` with `alloc`. A default build has no dependencies.
 The crate holds no `unsafe` (`#![forbid(unsafe_code)]`), no `static`, no logger, and never
@@ -19,9 +19,10 @@ The root re-exports the common task: `Describe` and `Leaf` (traits, and the deri
 `derive`), `Description`, `Fields`, `Datum`, `Shown`, `KeyPath`, `Segment`, `PathError`,
 `Fill`, `FillError`, `Partial`, `Missing`, `Source`, `SourceError`, `Unknown`, `Entries`,
 `Env` (`std`), `Inspect`, `Report`, `Finding`, `Reason`, `Check`, `Checks`, `Profile`,
-`Expect`, `BindError`, `NonDefault`, `non_defaults`, `differences`. The modules
-`describe`, `fill`, `path`, `datum`, `partial`, `source`, `env`, `inspect`, `report`,
-`check`, `profile` and `non_default` are public; the others' items are reached there.
+`Expect`, `BindError`, `NonDefault`, `non_defaults`, `differences`, `Configured` (and, with
+`derive`, `Builder`). The modules `describe`, `fill`, `path`, `datum`, `partial`, `source`,
+`env`, `inspect`, `report`, `check`, `profile`, `non_default` and `builder` are public; the
+others' items are reached there (`builder::Holds`, `builder::BuildError`).
 
 ## The idea
 
@@ -198,6 +199,79 @@ It also checks the bounds the description states (`min_length`, `max_length`, `m
 past the end is refused. `clear` on an optional group forgets that it was given; an
 `overlay`ed list replaces the list; an open map is merged key by key.
 
+`Partial::put<V: Describe + 'static>(&mut self, key, value: V)` (and `put_at`) sets a typed
+value at any path, through a hidden typed `Fill` method: `put("waiting.total", 5u32)`,
+`put("peers[1]", peer)`, an untagged enum's arm by the type given, an `Option` place by the
+value or an `Option` of it. A value of another type, or an unknown key, is a `FillError` and
+changes nothing; the text bounds of the description (`min_length`, `multiple_of`, ..) are not
+checked, as no text is written. `Fill::put(value)` sets every key from a value and keeps the
+defaults the fill was given. Because `put` skips the bounds, `overlay` (and so `fill`) re-sets
+each leaf through its text and drops one that breaks a bound: a `Partial` filled by `put` past a
+bound builds as it is but is not carried whole by `fill`.
+
+## Builders (`coqui_builder::builder`, `#[derive(Builder)]`)
+
+```rust
+pub trait Holds<S: Describe> { fn partial_mut(&mut self) -> &mut Partial<S>; }
+pub enum BuildError<E> { Missing(Missing), Failed(E) }   // non_exhaustive; Display is the inner's
+impl Missing { pub fn new(keys, inputs: Vec<&'static str>) -> Missing; pub fn keys(&self);
+               pub fn inputs(&self) -> &[&'static str]; pub fn is_empty(&self) -> bool; }
+```
+
+`Missing` displays `missing settings: a, b.c; missing inputs: identity` (an input is named by
+its field, not by a renamed setter); a part with nothing
+omitted is left out, and only names are written. `BuildError::source` is the conversion's own
+source, so a chain does not print the error twice.
+
+**Settings setters.** `#[derive(Describe)]` on a struct writes `pub trait <Name>Setters` (the
+struct's visibility): one `fn <setter>(self, value: impl Into<FieldType>) -> Self` per setting,
+the last call winning, implemented for every `B: Holds<Name>`. Import it to call them, from any
+crate (a settings crate re-exports it in its prelude). A setter that is `build`, `fill`,
+`fill_from`, `builder`, `new`, `configured`, `non_defaults`, `partial_mut`, `into` or `try_into`
+is refused, since an inherent method silently wins over a trait method; rename it with `#[builder(setter = "..")]`
+(the key stays the field's). A key below the top level has no setter: a hand-written method
+calls `partial_mut().put("a.b", value)`.
+
+**The builder.** On a parts struct, `#[derive(Builder)]` with `#[builder(build = X[, name =
+".."][, fallible][, entry = "new"][, crate = path])]` writes `XBuilder` (`name` replaces that
+name and is required for an `X` with generic arguments; a foreign `X` needs `name` when
+generic and `entry = "new"`):
+
+```rust
+X::builder() / XBuilder::new()                          // nothing set
+fn <input>(self, impl Into<I>) -> Self                  // `Option<J>` inputs take impl Into<J>
+fn fill(self, Partial<S>) -> Self                       // Partial::overlay: the last write wins
+fn fill_from(self, &mut impl Source) -> Result<Self, FillError>   // drops `Unknown`
+fn build(self) -> Result<X, Missing>                    // fallible: Result<X, BuildError<E>>
+impl From<Partial<S>> for XBuilder                      // equals X::builder().fill(p)
+```
+
+`fill_from` drops the keys the source holds that the settings lack; to see them, fill a
+`Partial` with `Partial::fill_from` and pass it to `fill`. `build` lists every missing key and
+every unset required input at once, then calls `From<Parts>` (or `TryFrom`). Layers run in the
+order called: a file, the environment, flags, then setters. The builder has the parts struct's
+visibility: a `pub` built type whose builder other crates must name needs a `pub` parts struct.
+`entry = "new"` also writes `Default`. `Check::verify` is not available on a
+builder (it is not `Describe`): make `Report::new(&S::description())` and call `check`.
+
+## Configured (`coqui_builder::Configured`)
+
+```rust
+pub trait Configured {
+    type Settings: Describe;
+    fn configured(&self) -> &dyn Inspect;
+    fn non_defaults(&self) -> Vec<NonDefault> { .. }
+}
+impl Profile { pub fn judge(&self, description: &Description, subject: &dyn Inspect, report: &mut Report); }
+```
+
+A builder is `Configured` (its view is the `Partial`, so an unset key reads as its default); so
+is a built type that derives `Configured` with `#[configured]` on its settings field. Each
+derive also writes `impl Check<Self> for Profile` (through `judge`; a blanket impl would overlap
+`Check<T: Describe + Inspect>`, and so would a built type that is itself `Describe + Inspect`: it
+gets E0119, derive `Configured` only on a type that is not) and an inherent `non_defaults()` so no import is needed. A
+builder's `non_defaults()` and its built value's are equal.
+
 ## Sources (`coqui_builder::source`, `env`)
 
 ```rust
@@ -345,8 +419,9 @@ names the type a datum shows, `#[leaf(ordered)]` takes the order from `PartialOr
 | `#[builder(crate = path)]` | type | where `coqui_builder` is re-exported |
 
 `#[map(crate = ..)]`, guatiao's spelling, is read and ignored. A setting whose setter would
-be `build`, `fill`, `fill_from`, `builder`, `new`, `configured`, `non_defaults` or
-`partial_mut` is refused; rename the setter with `#[builder(setter = "..")]` (the key stays).
+be `build`, `fill`, `fill_from`, `builder`, `new`, `configured`, `non_defaults`,
+`partial_mut`, `into` or `try_into` is refused; rename the setter with `#[builder(setter =
+"..")]` (the key stays).
 
 ## Errors
 
@@ -374,7 +449,8 @@ Only `Env::new(prefix)` reads any: the variables of this process that start with
 - A profile made by `defaults` says nothing about the entries of an open map.
 - `Partial::overlay` of a `Partial::from(value)` carries the `None` of an optional: with a
   `none` text it lays that text over, without one it forgets what the target held. A `None`
-  at a list position is left alone, as clearing it would shift its neighbours.
+  at a list position or as a map entry is not carried (clearing a position would shift its
+  neighbours, and an entry has nothing to forget).
 - The default of an open map or of a list of groups is built but not described: the
   description records defaults as texts of leaves and lists of leaves, so `non_defaults`
   of such a default lists its entries.

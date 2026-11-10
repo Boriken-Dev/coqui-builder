@@ -52,6 +52,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (`fill_from`, `overlay`, `non_defaults`, `differences`, profiles, redaction) follow whichever
   side a value holds; a finding between differing sides shows the structured side as
   `Shown::Fields`.
+- Typed setters: `#[derive(Describe)]` on a struct also writes `<Name>Setters`, a trait with one
+  method per setting taking `impl Into<FieldType>` (the last call wins), implemented for every
+  `builder::Holds<Name>`; import it, from any crate, to call the setters. `Fill::put` sets every
+  key from a value and keeps the defaults; `Partial::put(key, value)` does it for a typed value
+  at any path (`waiting.limits`, `peers[1]`, an untagged enum's arm) and refuses a value of
+  another type or an unknown key, changing nothing.
+- `#[derive(Builder)]` on a parts struct (one settings field, every other field a
+  `#[builder(input)]`) writes the builder: `X::builder()` (`entry = "new"` gives
+  `XBuilder::new()`, for a type that is not local), a setter per input, `fill` (overlay),
+  `fill_from` (a source; the unknown keys are dropped), `From<Partial<S>>` and `build`, which
+  lists every missing setting and input at once (`Missing::inputs`, `Missing::is_empty`) and
+  runs `From` over the parts, or with `fallible` `TryFrom` and `BuildError<E>`.
+  `name = ".."` names the builder and is required for a built type with generic arguments.
+- `Configured`, the link between a builder, what it built and a profile: the settings through
+  `Inspect`, `non_defaults`, `Check<Builder> for Profile` and `Profile::judge`; written by
+  `#[derive(Builder)]` and, on a built type with one `#[configured]` field, `#[derive(Configured)]`.
 - `#[derive(Describe)]` and `#[derive(Leaf)]` (feature `derive`) with the attributes of
   guatiao's derives (`rename`, `rename_all`, `skip`, `default`, `flatten`, `transparent`,
   `deny_unknown_fields`, `tag`, `untagged`, `other`, `as_text`, `with`, `#[schema(..)]`), plus
