@@ -286,6 +286,55 @@ fn an_empty_builder_lists_every_required_key_and_input_at_once() {
     assert_eq!(missing.to_string(), "missing settings: host");
 }
 
+/// A second terminal written over `parts()`: it needs no runtime, only the parts.
+impl ServerBuilder {
+    async fn build_async(self) -> Result<Server, Missing> {
+        self.parts().map(Server::from)
+    }
+}
+
+fn ready<T>(future: impl std::future::Future<Output = T>) -> T {
+    let mut future = std::pin::pin!(future);
+    let mut cx = std::task::Context::from_waker(std::task::Waker::noop());
+    match future.as_mut().poll(&mut cx) {
+        std::task::Poll::Ready(value) => value,
+        std::task::Poll::Pending => panic!("the future waited"),
+    }
+}
+
+#[test]
+fn parts_is_what_build_converts_and_misses_what_build_misses() {
+    let parts = Server::builder().host("h").identity("srv").parts().unwrap();
+    assert_eq!(parts.settings.host, "h");
+    assert_eq!(parts.settings.port, 8080);
+    assert_eq!(parts.identity, Identity("srv".to_owned()));
+    assert_eq!(parts.label, None);
+    let labelled = Server::builder()
+        .host("h")
+        .identity("srv")
+        .label("front")
+        .parts()
+        .unwrap();
+    assert_eq!(labelled.label.as_deref(), Some("front"));
+
+    let built = Server::builder().host("h").identity("srv").build().unwrap();
+    assert_eq!(Server::from(parts), built);
+
+    let from_parts = Server::builder().parts().err().unwrap();
+    let from_build = Server::builder().build().unwrap_err();
+    assert_eq!(from_parts, from_build);
+    let from_parts = Server::builder().host("h").parts().err().unwrap();
+    assert_eq!(from_parts.to_string(), "missing inputs: identity");
+}
+
+#[test]
+fn a_second_terminal_over_parts_needs_no_runtime() {
+    let built = ready(Server::builder().host("h").identity("srv").build_async()).unwrap();
+    assert_eq!(built.settings.host, "h");
+    let missing = ready(Server::builder().build_async()).unwrap_err();
+    assert_eq!(missing, Server::builder().build().unwrap_err());
+}
+
 #[test]
 fn from_a_partial_equals_builder_fill() {
     let one = Server::builder()

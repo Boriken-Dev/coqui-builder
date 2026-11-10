@@ -477,13 +477,15 @@ fn try_expand(tokens: TokenStream) -> syn::Result<TokenStream> {
                 ::core::result::Result::Ok(self)
             }
 
-            /// The built value, or everything that is missing: every required setting and
-            /// every required input, at once.
+            /// The parts: the settings built, every required input present and every optional
+            /// input as given. A second terminal (one that builds a different value from the
+            /// same parts) is written over this.
             ///
             /// # Errors
             ///
-            /// What is missing, or for a fallible build the error of the conversion.
-            pub fn build(self) -> #ret {
+            /// Everything that is missing, at once: the same `Missing`
+            /// that `build` gives.
+            pub fn parts(self) -> ::core::result::Result<#parts #parts_ty_g, #krate::Missing> {
                 let mut __inputs: #krate::__private::Vec<&'static str> = #krate::__private::Vec::new();
                 #(#required_checks)*
                 let (__settings, __keys) = match self.__partial.build() {
@@ -496,14 +498,25 @@ fn try_expand(tokens: TokenStream) -> syn::Result<TokenStream> {
                 };
                 match (__settings, #(self.#required_fields,)*) {
                     (::core::option::Option::Some(__settings), #(::core::option::Option::Some(#locals),)*) => {
-                        let __parts = #parts {
+                        ::core::result::Result::Ok(#parts {
                             #settings_field: __settings,
                             #(#part_inits)*
-                        };
-                        #finish
+                        })
                     }
-                    _ => {
-                        let __missing = #krate::Missing::new(__keys, __inputs);
+                    _ => ::core::result::Result::Err(#krate::Missing::new(__keys, __inputs)),
+                }
+            }
+
+            /// The built value, or everything that is missing: every required setting and
+            /// every required input, at once.
+            ///
+            /// # Errors
+            ///
+            /// What is missing, or for a fallible build the error of the conversion.
+            pub fn build(self) -> #ret {
+                match self.parts() {
+                    ::core::result::Result::Ok(__parts) => #finish,
+                    ::core::result::Result::Err(__missing) => {
                         ::core::result::Result::Err(#missing)
                     }
                 }

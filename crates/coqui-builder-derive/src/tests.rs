@@ -197,6 +197,7 @@ fn the_reserved_setter_names_are_the_ones_every_builder_has() {
         RESERVED_SETTERS,
         [
             "build",
+            "parts",
             "fill",
             "fill_from",
             "builder",
@@ -367,6 +368,24 @@ fn a_parts_struct_is_refused_with_a_sentence() {
     ] {
         assert!(!builder_text(ok).contains("compile_error"), "{ok}");
     }
+}
+
+#[test]
+fn parts_is_refused_as_a_setter_for_a_setting_and_for_an_input() {
+    let setting = expand_text("struct S { parts: u8 }")
+        .unwrap_err()
+        .to_string();
+    assert!(setting.contains("`parts`"), "{setting}");
+    assert!(setting.contains("setter"), "{setting}");
+    let input =
+        builder_text("#[builder(build = X)] struct P { settings: S, #[builder(input)] parts: u8 }");
+    assert!(input.contains("compile_error"), "{input}");
+    assert!(input.contains("isamethodeverybuilderhas"), "{input}");
+    let renamed = builder_text(
+        "#[builder(build = X)] struct P { settings: S,          #[builder(input, setter = \"parts_of\")] parts: u8 }",
+    );
+    assert!(!renamed.contains("compile_error"), "{renamed}");
+    assert!(expand_text("struct S { #[builder(setter = \"parts_of\")] parts: u8 }").is_ok());
 }
 
 #[test]

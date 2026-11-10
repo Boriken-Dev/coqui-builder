@@ -102,8 +102,8 @@ Contracts:
 - `with = path` names a module with `const TYPE: &str`, `to_text(&T) -> String` and
   `from_text(&str) -> Result<T, LeafError>`; the field is a leaf of that type. It cannot use a generic parameter of the type it sits in, and is
   refused on an `Option`.
-- A setting whose setter name (the field, or `setter = ".."`) is `build`, `fill`,
-  `fill_from`, `builder`, `new`, `configured`, `non_defaults`, `partial_mut`, `into` or `try_into` is refused.
+- A setting whose setter name (the field, or `setter = ".."`) is `build`, `parts`,
+  `fill`, `fill_from`, `builder`, `new`, `configured`, `non_defaults`, `partial_mut`, `into` or `try_into` is refused.
 - `skip_serializing_if` and `alias` are refused: nothing is written, and a description has
   no alias.
 
@@ -136,10 +136,11 @@ struct `#[builder(build = X[, name = ".."][, fallible][, entry = "new"][, crate 
   required when the parts struct has generic parameters or lifetimes.
 - An input of type `Option<J>` takes `impl Into<J>` and is never missing; any other input is
   named in `Missing::inputs` while unset.
-- An input setter that is one of `build`, `fill`, `fill_from`, `builder`, `new`,
+- An input setter that is one of `build`, `parts`, `fill`, `fill_from`, `builder`, `new`,
   `configured`, `non_defaults`, `partial_mut`, `into` or `try_into` is refused; one equal to a setter of the settings
   fails the build of the builder (E0080); two inputs with one setter are refused.
-- The builder has `fill`, `fill_from` (the `Unknown` keys are dropped), `build`, `From<Partial<S>>`,
+- The builder has `fill`, `fill_from` (the `Unknown` keys are dropped), `build`, `parts`
+  (`Result<Parts, Missing>`: `build` is `parts` and then the conversion), `From<Partial<S>>`,
   `Holds<S>`, `Configured`, `Check<XBuilder> for Profile`, an inherent `non_defaults` and a
   `Debug` that shows which inputs are set and never a value.
 - Zero or two settings fields, a missing `build`, an unknown key, a name that is no identifier

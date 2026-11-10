@@ -85,6 +85,22 @@ let server = Server::builder()
     .build()?;            // names every missing setting and input at once
 ```
 
+A second way to finish a builder (an `async fn build_async`, a `configs()` that gives two
+values) is written by hand over `parts()`, which gives the parts struct with the settings
+built, the required inputs present and the optional ones as given, or the same `Missing` that `build` gives:
+
+```rust
+impl ServerBuilder {
+    async fn build_async(self) -> Result<Server, Missing> {
+        let parts = self.parts()?;
+        // ... await whatever the parts need, then convert them
+        Ok(Server::from(parts))
+    }
+}
+```
+
+A builder is not `Clone`: an input need not be.
+
 A key below the top level is set with `Partial::put("limits.total", 5u32)` through
 `partial_mut()` (a method of `coqui_builder::builder::Holds`, so import it). The built type's `Configured` view gives `non_defaults()` and lets a `Profile`
 check a builder as it checks a built value.

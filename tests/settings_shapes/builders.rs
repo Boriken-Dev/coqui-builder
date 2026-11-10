@@ -10,7 +10,7 @@ use core::fmt;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use coqui_builder::builder::Holds;
+use coqui_builder::builder::{BuildError, Holds};
 use coqui_builder::{Builder, Configured};
 
 use super::pipe::ListenerSettings;
@@ -130,6 +130,29 @@ impl TryFrom<ServerParts<'_>> for Built<ServerConfig> {
             },
             settings: parts.settings,
         })
+    }
+}
+
+impl ServerBuilder<'_> {
+    /// A second terminal over the parts: the server's configuration and the client's that
+    /// trusts it, from the one set of settings.
+    pub fn configs(self) -> Result<(ServerConfig, ClientConfig), BuildError<PeerError>> {
+        let parts = self.parts().map_err(BuildError::Missing)?;
+        checked(&parts.settings).map_err(BuildError::Failed)?;
+        let alpn = parts.settings.alpn_bytes();
+        let server = ServerConfig {
+            identity: parts.identity.0.clone(),
+            client_auth: parts.client_auth,
+            alpn: alpn.clone(),
+            tls_versions: parts.settings.policy.tls_versions.len(),
+        };
+        let client = ClientConfig {
+            server: ServerAuth::Trust(Trust(parts.identity.0.clone())),
+            identity: None,
+            alpn,
+            require_ems: parts.settings.policy.require_ems,
+        };
+        Ok((server, client))
     }
 }
 

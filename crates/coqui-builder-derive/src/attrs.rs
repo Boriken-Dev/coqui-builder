@@ -57,6 +57,7 @@ pub(crate) const BUILDER_TYPE_KEYS: &[&str] = &["crate"];
 /// Method names every builder has: a setting cannot take one for its setter.
 pub(crate) const RESERVED_SETTERS: &[&str] = &[
     "build",
+    "parts",
     "fill",
     "fill_from",
     "builder",

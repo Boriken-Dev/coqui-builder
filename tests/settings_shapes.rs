@@ -817,6 +817,26 @@ fn an_empty_server_builder_names_every_required_input() {
 }
 
 #[test]
+fn a_second_terminal_over_parts_agrees_with_build() {
+    let identity = identity();
+    let make = || {
+        ServerBuilder::new()
+            .identity(&identity)
+            .client_auth(ClientAuth::Required(Trust("pins".to_owned())))
+            .alpn(vec!["h2".parse::<Alpn>().unwrap()])
+            .policy(Policy::modern())
+    };
+    let built = make().build().unwrap();
+    let (server, client) = make().configs().unwrap();
+    assert_eq!(server, built.config);
+    assert_eq!(client.alpn, built.config.alpn);
+    assert_eq!(client.require_ems, built.settings.policy.require_ems);
+
+    let missing = missing_of(ServerBuilder::new().configs());
+    assert_eq!(missing, missing_of(ServerBuilder::new().build()));
+}
+
+#[test]
 fn a_server_builder_layers_a_partial_then_the_environment_then_setters() {
     let identity = identity();
     let mut file = Partial::<TlsSettings>::new();

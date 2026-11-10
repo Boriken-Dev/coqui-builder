@@ -231,8 +231,8 @@ source, so a chain does not print the error twice.
 **Settings setters.** `#[derive(Describe)]` on a struct writes `pub trait <Name>Setters` (the
 struct's visibility): one `fn <setter>(self, value: impl Into<FieldType>) -> Self` per setting,
 the last call winning, implemented for every `B: Holds<Name>`. Import it to call them, from any
-crate (a settings crate re-exports it in its prelude). A setter that is `build`, `fill`,
-`fill_from`, `builder`, `new`, `configured`, `non_defaults`, `partial_mut`, `into` or `try_into`
+crate (a settings crate re-exports it in its prelude). A setter that is `build`, `parts`,
+`fill`, `fill_from`, `builder`, `new`, `configured`, `non_defaults`, `partial_mut`, `into` or `try_into`
 is refused, since an inherent method silently wins over a trait method; rename it with `#[builder(setter = "..")]`
 (the key stays the field's). A key below the top level has no setter: a hand-written method
 calls `partial_mut().put("a.b", value)`.
@@ -248,12 +248,17 @@ fn <input>(self, impl Into<I>) -> Self                  // `Option<J>` inputs ta
 fn fill(self, Partial<S>) -> Self                       // Partial::overlay: the last write wins
 fn fill_from(self, &mut impl Source) -> Result<Self, FillError>   // drops `Unknown`
 fn build(self) -> Result<X, Missing>                    // fallible: Result<X, BuildError<E>>
+fn parts(self) -> Result<Parts, Missing>                //  what build converts; the same Missing
 impl From<Partial<S>> for XBuilder                      // equals X::builder().fill(p)
 ```
 
 `fill_from` drops the keys the source holds that the settings lack; to see them, fill a
 `Partial` with `Partial::fill_from` and pass it to `fill`. `build` lists every missing key and
-every unset required input at once, then calls `From<Parts>` (or `TryFrom`). Layers run in the
+every unset required input at once, then calls `From<Parts>` (or `TryFrom`); it is `parts()`
+followed by that conversion. A second terminal (an `async fn build_async`, a `configs()` giving
+two values) is written by hand over `parts()`, which gives the parts struct with the settings
+built, the required inputs present and the optional ones as given, or the same `Missing`. A
+builder is not `Clone`: its inputs need not be. Layers run in the
 order called: a file, the environment, flags, then setters. The builder has the parts struct's
 visibility: a `pub` built type whose builder other crates must name needs a `pub` parts struct.
 `entry = "new"` also writes `Default`. `Check::verify` is not available on a
@@ -476,7 +481,7 @@ names the type a datum shows, `#[leaf(ordered)]` takes the order from `PartialOr
 | `#[builder(crate = path)]` | type | where `coqui_builder` is re-exported |
 
 `#[map(crate = ..)]`, guatiao's spelling, is read and ignored. A setting whose setter would
-be `build`, `fill`, `fill_from`, `builder`, `new`, `configured`, `non_defaults`,
+be `build`, `parts`, `fill`, `fill_from`, `builder`, `new`, `configured`, `non_defaults`,
 `partial_mut`, `into` or `try_into` is refused; rename the setter with `#[builder(setter =
 "..")]` (the key stays).
 

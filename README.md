@@ -23,7 +23,8 @@ whether a value meets what is expected, with every secret hidden. See the
   list is replaced whole.
 - **Fails once, completely** — `Partial::build` lists every key still missing, not the first.
 - **A builder from the description** — `#[derive(Builder)]` on a parts struct writes typed
-  setters, layers (`fill`), and a `build` that names every missing setting and input at once.
+  setters, layers (`fill`), and a `build` that names every missing setting and input at once;
+  `parts()` gives what `build` converts, for a terminal written by hand.
 - **Non-defaults as data** — `non_defaults` lists each setting that differs from its default
   as `{setting, value, default}`, each a type and its text (`u32(64)`); a secret is `String(***)`.
   Values are compared as typed values, so `30s` equals `30000ms`.
