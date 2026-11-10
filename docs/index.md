@@ -60,6 +60,28 @@ let profile = Profile::new().expecting("waiting", Expect::Equal("16".into()))?;
 let report = profile.verify(&limits);
 ```
 
+## A value written as text or as a table
+
+An enum marked `#[map(untagged)]` holds any number of arms that are a single value (unit names,
+`Name(bool)`, `Name(u16)`) and at most one structured arm (a group, a list, a map or a tagged
+enum). A source that answers a value at the enum's key means a text arm; one that answers
+entries, or any key below it, means the structured arm.
+
+```rust
+#[derive(Describe, Debug, PartialEq)]
+#[map(untagged)]
+enum CacheSetting {
+    Enabled(bool),
+    Tuned(CacheOptions),
+}
+```
+
+`cache = true`, `cache = false` and `cache = { ttl = "30s" }` all read. In the environment,
+`APP_CACHE=false` is the text arm and `APP_CACHE__TTL=30s` the structured one; setting both
+is an error. Setting a key below the enum switches a `Partial` to the structured arm, and
+setting the enum's text switches it back, dropping what the other side held. A second
+structured arm fails the build of the enum: tell the arms apart with `#[map(tag = "..")]`.
+
 ## Learn more
 
 - [Rust API reference](https://boriken-dev.github.io/coqui-builder/rust/index.html)

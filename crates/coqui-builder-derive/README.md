@@ -13,7 +13,7 @@ It is reached through `coqui-builder`'s `derive` feature and is never named dire
 ## Features
 
 - **`#[derive(Describe)]`** — a struct of named fields, a newtype, an enum of unit variants,
-  a tagged enum and an untagged enum.
+  a tagged enum, and an untagged enum of text arms with at most one structured arm.
 - **`#[derive(Leaf)]`** — a type that is one setting as one text: a unit-only enum by its
   variant names, any other type by `Display` and `FromStr`.
 - **The spellings guatiao's derives read** — `#[map(..)]`, `#[schema(..)]`, so a type can move

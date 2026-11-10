@@ -65,13 +65,14 @@ impl Datum {
     pub fn ty(&self) -> &'static str;   pub fn text(&self) -> &str;
     pub fn is_sensitive(&self) -> bool; pub fn sensitive(self) -> Datum;   // mark as a secret
 }
-pub enum Shown { Unset, One(Datum), Items(Vec<Datum>) }   // what a finding or non-default holds
-impl Shown { pub fn sensitive(self) -> Shown; }
+pub enum Shown { Unset, One(Datum), Items(Vec<Datum>), Fields(Vec<(String, Datum)>) }
+impl Shown { pub fn sensitive(self) -> Shown; }   // what a finding or non-default holds
 ```
 
 A datum is never a list or a record: every leaf parses and prints its own text. `Display` is
 `Type(text)` (`u32(64)`, `Duration(30s)`); a secret is `Type(***)`, in `Display` and in
-`Debug`. `Shown` prints `unset`, `Type(text)` or `[Type(a), Type(b)]`.
+`Debug`. `Shown` prints `unset`, `Type(text)`, `[Type(a), Type(b)]` or, for the structured arm
+of an untagged enum between differing sides, `{ttl: Duration(30s), size: u32(8)}`.
 
 ## Describing (`coqui_builder::describe`)
 
@@ -79,6 +80,7 @@ A datum is never a list or a record: every leaf parses and prints its own text. 
 pub trait Describe: Sized {
     type Fill: Fill<Self>;
     const OPTIONAL: bool = false;           // true for Option<_>
+    const LEAF: bool = false;               // one text: a Leaf, or an untagged enum of texts
     fn description() -> Description;        // owned, built on each call
 }
 pub struct Description;  // kind(), kind_mut(), notes(), notes_mut(), resolve(&[Segment]),
@@ -86,9 +88,11 @@ pub struct Description;  // kind(), kind_mut(), notes(), notes_mut(), resolve(&[
                          // knows(..), default_at(..), check_text(&str) -> Result<(), Bound>,
                          // check_items(usize), group_fields(), into_group_fields();
                          // built by new(Kind), leaf::<T>(), leaf_of::<T, C>(), list(..),
-                         // map(..), group(fields), variant(..), union(..)
+                         // map(..), group(fields), variant(..), union(text, structured)
 pub enum Kind { Leaf(LeafInfo), List(Box<Description>), Map(Box<Description>), Group(Group),
-                Variant(Variant), Union(Vec<Description>) }                 // non_exhaustive
+                Variant(Variant), Union(Union) }                            // non_exhaustive
+pub struct Union;      // text() -> &LeafInfo, structured() -> &Description,
+                       // default_is_structured(); built by new(text, structured)
 pub struct LeafInfo;   // ty(), choices(), labels(), label(&str), is_ordered(), check(&str),
                        // eq(&str, &str), order(&str, &str); of::<T>(), of_codec::<T, C>()
 pub struct Field { key, required, optional, default: Option<String>,
@@ -98,6 +102,11 @@ pub struct Notes { title, description, sensitive, read_only, deprecated, example
                    multiple_of, min_items, max_items }                       // non_exhaustive
 pub enum Stricter { Higher, Lower }
 ```
+
+A `Union` is an untagged enum with a text side (the unit names and the single-value arms, one
+leaf named after the enum) and one structured arm (a group, list, map or tagged variant), both
+at the enum's own path. A key below the enum is in the structured arm; `resolve` reports a
+`Gate` with `is_union()` for it.
 
 A `Group` holds `fields` and `deny_unknown_fields`. A `Variant` holds a `tag`, `arms` (each an
 `Arm` with its own `fields`) and a default arm; the tag is itself a key, a `String` leaf.
@@ -180,6 +189,10 @@ impl<T: Describe> Inspect for Partial<T>;                       // set keys, els
 ```
 
 `set` is text for every leaf; the leaf's own parser reads it, so a duration key takes `30s`.
+At an untagged enum, `set` with a path of its own sets the text side; a key below it, or
+`set_items` (an empty list chooses a group), switches to the structured arm and drops a text,
+and setting the text again forgets the structured keys (a default given to that arm stays).
+`clear` of the enum forgets both sides.
 It also checks the bounds the description states (`min_length`, `max_length`, `min_items`,
 `max_items`, `multiple_of`). A failed `set` changes nothing. A list position more than 1024
 past the end is refused. `clear` on an optional group forgets that it was given; an
@@ -198,7 +211,11 @@ pub enum Entries { Len(usize), Keys(Vec<String>) }              // non_exhaustiv
 
 `fill_from` walks the description: `value` per leaf, the tag before an arm (only the chosen
 arm's fields are asked for), `entries` per list (`Len`) and open map (`Keys`), then each
-element by its own path. A list the source answers by `Len` is replaced whole. Keys the
+element by its own path. At an untagged enum with a structured arm it asks `entries` and `value`
+at the enum's key: a value is the text side, entries the structured side (an empty table still
+chooses it), both is a `SourceError` naming the key, and neither walks the structured arm for
+keys below. A source holding a table there answers `entries`; its refusal of `value` on a table
+is not a failure. A list the source answers by `Len` is replaced whole. Keys the
 source holds that the description lacks are returned in `Unknown`, and refused
 (`FillErrorKind::UnknownKeys`, after everything else was filled) under a group with
 `deny_unknown_fields`. The first `SourceError` or leaf refusal stops the fill. Precedence is
@@ -206,7 +223,8 @@ the order of the calls: the last write of a key wins.
 
 `Env::new("APP")` and `Env::from_vars("APP", iter)` (`std`): a path maps to `APP_A__B`:
 segments upper-cased with `-` as `_`, `__` between segments, positions as digits, open-map
-keys as found. The prefix is matched as written; the rest of a name in any case. An empty
+keys as found (`APP_CACHE=false` is an untagged enum's text, `APP_CACHE__TTL=30s` its
+structured arm; both set is refused). The prefix is matched as written; the rest of a name in any case. An empty
 variable is unset. A list position of 65535 or more is ignored, and a gap of more than 1024
 past the end of a list refuses the fill. A variable whose leaf was read is never reported as
 unknown, whatever its spelling. `Env::name(&KeyPath)` gives the variable of a leaf. A list
@@ -253,7 +271,10 @@ pub struct NonDefault { pub setting: String, pub value: Shown, pub default: Show
 ```
 
 `differences` walks a group's fields, an open map's entries and a variant's fields (when
-both sides are the same arm). A leaf is compared as typed values. A list of leaves is one
+both sides are the same arm). An untagged enum is its text leaf when both sides hold text, its
+structured arm when both hold it, and one place at the enum otherwise (the text as
+`Type(text)`, the structured side as `Shown::Fields`, expecting `Equal(text)` or, from a
+structured baseline, `Required`). A leaf is compared as typed values. A list of leaves is one
 place, shown whole as `Shown::Items`. A switched arm is one place at its tag; a group present
 on one side only is one place at the group with no value. A key left out reads as its default.
 Findings come in the order of their path segments as text.
@@ -292,7 +313,9 @@ the tests, so a profile can be read from a file or a form like any other setting
 
 A struct of named fields is a group; a newtype or `#[map(transparent)]` struct is its field's
 setting; an enum of unit variants is a `Leaf` with choices; `#[map(tag = "k")]` makes a variant
-of arms; `#[map(untagged)]` a `Leaf` told apart by trying each held leaf's parser in order.
+of arms; `#[map(untagged)]` text arms (unit names, then each single-value `Name(T)` in order) and at
+most one structured `Name(T)` (a group, list, map or tagged enum): see the derive's header. A
+second structured arm fails the build of the enum.
 A struct may be generic over types; a generic enum, a lifetime, a tuple struct of two or
 more fields, a unit struct, a union, an untagged variant with named fields and a type that
 holds itself are refused with a sentence.
@@ -309,7 +332,7 @@ names the type a datum shows, `#[leaf(ordered)]` takes the order from `PartialOr
 | `#[map(default)]`, `#[map(default = expr)]`, `#[schema(default = expr)]` | field | the default; the key is not required |
 | `#[map(flatten)]` | field | the field's keys sit beside the others (`Fields` is required) |
 | `#[map(transparent)]`, `#[map(deny_unknown_fields)]` | struct | as named |
-| `#[map(tag = "k")]`, `#[map(untagged)]`, `#[map(other)]` | enum, variant | arms; held leaves; the catch-all `Other(String)` |
+| `#[map(tag = "k")]`, `#[map(untagged)]`, `#[map(other)]` | enum, variant | arms; held values; the catch-all `Other(String)` |
 | `#[map(as_text)]` | field | `Display` out, `FromStr` in; per item for `Vec<T>` and `Option<Vec<T>>` |
 | `#[map(with = path)]` | field | a module with `TYPE`, `to_text(&T)`, `from_text(&str)`; the field is a leaf |
 | `#[map(none = "text")]` | `Option` field | the text that writes `None`; needs `default = expr`; the inner type must not read that text |

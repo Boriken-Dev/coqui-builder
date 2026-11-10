@@ -41,6 +41,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   parser reads when the profile is bound (`Profile::bind`): build one by hand, from a type's
   defaults (`Profile::defaults`) or from a value (`Profile::against`), `merge` them, and check a
   value. A secret is expected to be set, never to equal a copy of itself.
+- An untagged enum (`#[map(untagged)]`) holds any number of text arms (unit names and
+  single-value arms, tried in order) and at most one structured arm (a group, list, map or
+  tagged enum): `Kind::Union(Union)` with `text()` and `structured()`, `Describe::LEAF`, and a
+  derive that implements `Describe` rather than `Leaf` for an enum that holds a value. A source's
+  `value` at the enum's key is the text side and `entries` (or any key below) the structured one,
+  both together an error (`APP_CACHE=false` against `APP_CACHE__TTL=30s`); setting a key below
+  switches a `Partial` to the structured arm, setting the text switches it back. A second
+  structured arm, or one that is itself such an enum, fails the build of the enum. The walks
+  (`fill_from`, `overlay`, `non_defaults`, `differences`, profiles, redaction) follow whichever
+  side a value holds; a finding between differing sides shows the structured side as
+  `Shown::Fields`.
 - `#[derive(Describe)]` and `#[derive(Leaf)]` (feature `derive`) with the attributes of
   guatiao's derives (`rename`, `rename_all`, `skip`, `default`, `flatten`, `transparent`,
   `deny_unknown_fields`, `tag`, `untagged`, `other`, `as_text`, `with`, `#[schema(..)]`), plus

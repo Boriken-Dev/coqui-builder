@@ -19,8 +19,9 @@ the same name.
 
 Writes, inside an anonymous `const` so nothing leaks into the caller's namespace:
 `Describe` (with the hidden `Fill` the `Partial` holds), `Inspect`, and for a struct of named
-fields `Fields`; for an enum of unit variants or an untagged enum, `Leaf` (a type that is one
-text). The expansion
+fields `Fields`; for an enum of unit variants or an untagged enum of unit variants, `Leaf` (a
+type that is one text); for an untagged enum that holds a value, `Describe` and `Inspect` alone
+(see below). The expansion
 names `::coqui_builder` (or the path of `#[builder(crate = path)]`), `::core` and the
 hidden `coqui_builder::__private`.
 
@@ -30,12 +31,33 @@ hidden `coqui_builder::__private`.
 | newtype struct, or `#[map(transparent)]` struct | the field's own setting |
 | enum of unit variants | a `Leaf` with choices; `#[map(other)] Other(String)` keeps an unknown name |
 | enum with `#[map(tag = "k")]` | arms: unit, named-field or `Name(T)` (the keys of `T`, a struct with named fields, sit beside the tag) |
-| enum with `#[map(untagged)]` | a `Leaf` that reads its unit names, then each held leaf's parser in order |
+| enum of unit variants with `#[map(untagged)]` | a `Leaf` of its names |
+| enum with `#[map(untagged)]` and a `Name(T)` variant | text arms and at most one structured arm (below) |
 
 Refused with a sentence: a tuple struct of two or more fields, a unit struct, a union, a
 generic enum, a lifetime or const parameter, an untagged variant with named fields, a
 variant that carries fields in an enum without a tag, and a field whose type names the type
 it is in.
+
+### Untagged enums that hold a value
+
+Each `Name(T)` needs `T: Describe + Inspect`. The unit names and every `T` that is one text
+(`Describe::LEAF`: a `Leaf`, or an untagged enum of texts) are the **text arms**: one leaf
+whose parser tries the unit names, then each text arm in declaration order. The one `T` that
+is not (a group, list, map or tagged enum) is the **structured arm**. A source answering
+`value` at the enum's key means a text arm; `entries`, or any key below, means the structured
+arm. Both is a `SourceError`. Without a structured arm the description is a leaf, with one it
+is `Kind::Union`.
+
+The derive cannot see whether `T` is one text, so it emits a `const` assertion over
+`Describe::LEAF`. A second structured arm, or an arm that is itself an untagged enum holding a
+structured arm, fails the build of the enum, a compile error (E0080) whose message is
+``Either: an untagged enum holds at most one arm that is not a single value; tell the others
+apart with a tag`` (and, for the nested case, ``the structured arm of an untagged enum is a
+group, a list, a map or a tagged enum, not another untagged enum that holds a structured
+arm``). An arm that names the enum itself is refused like any self-reference. It is never a
+run-time error. Choices are the
+unit names when the enum has no other text arm.
 
 ### `#[derive(Leaf)]`
 
@@ -87,3 +109,7 @@ Contracts:
   `cfg` is no key.
 - Every type parameter of a generic struct is bound by `Describe + Inspect`.
 - Indirect recursion (A holds B holds A) is not detected.
+- An untagged enum that holds a value is `Describe` but not `Leaf`: it takes no `none = ".."`
+  as an `Option` field, and `assert_round_trip` does not apply.
+- Setting an untagged enum's text after setting keys of its structured arm forgets those keys;
+  a default the structured arm was given stays.
