@@ -266,14 +266,14 @@
     {
       "name": "setters_on names a builder that gets the setters as inherent methods",
       "item": "{derive} #[builder(setters_on = XBuilder)] struct S { a: u8 }",
-      "guatiao": "pending",
+      "guatiao": "accept",
       "coqui_builder": "accept",
       "compiles_alone": false
     },
     {
       "name": "setters_on takes a type",
       "item": "{derive} #[builder(setters_on = \"XBuilder\")] struct S { a: u8 }",
-      "guatiao": "pending",
+      "guatiao": "accept",
       "coqui_builder": {"refuse": "takes the type of a builder"}
     },
     {
