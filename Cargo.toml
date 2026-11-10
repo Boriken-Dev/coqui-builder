@@ -60,7 +60,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [[test]]
 name = "shapes"
-required-features = ["derive"]
+required-features = ["derive", "std"]
 
 [[test]]
 name = "derive_leaf"
