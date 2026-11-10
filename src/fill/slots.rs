@@ -8,10 +8,11 @@
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::any::Any;
 use core::fmt;
 use core::marker::PhantomData;
 
-use super::{Fill, FillError, FillErrorKind};
+use super::{Fill, FillError, FillErrorKind, put_whole};
 use crate::datum::Datum;
 use crate::describe::{Codec, Describe, Description, Native};
 use crate::inspect::{Entries, Inspect};
@@ -116,6 +117,10 @@ impl<T, C: Codec<T>> Fill<T> for LeafSlot<T, C> {
             value: Some(value),
             ..LeafSlot::default()
         }
+    }
+
+    fn put(&mut self, value: T) {
+        self.value = Some(value);
     }
 }
 
@@ -240,6 +245,34 @@ impl<T, F: Fill<T>> Fill<Option<T>> for OptionSlot<T, F> {
             return self.inner.build(at, missing).map(Some);
         }
         Some(None)
+    }
+
+    fn put(&mut self, value: Option<T>) {
+        match value {
+            Some(inner) => {
+                self.inner.put(inner);
+                self.touched = true;
+                self.explicit_none = false;
+            }
+            None => {
+                crate::__private::forget::<T, F>(&mut self.inner);
+                self.touched = false;
+                self.explicit_none = true;
+            }
+        }
+    }
+
+    fn put_any(&mut self, at: &[Segment], value: &mut dyn Any) -> Result<(), FillError>
+    where
+        Option<T>: 'static,
+    {
+        if at.is_empty() && value.is::<Option<Option<T>>>() {
+            return put_whole::<Option<T>, Self>(self, value);
+        }
+        self.inner.put_any(at, value)?;
+        self.touched = true;
+        self.explicit_none = false;
+        Ok(())
     }
 
     fn holds_none(&self, at: &[Segment]) -> bool {
@@ -437,6 +470,24 @@ impl<T, F: Fill<T>> Fill<Vec<T>> for ListSlot<T, F> {
         complete.then_some(built)
     }
 
+    fn put(&mut self, value: Vec<T>) {
+        self.items = value.into_iter().map(F::from_value).collect();
+        self.touched = true;
+    }
+
+    fn put_any(&mut self, at: &[Segment], value: &mut dyn Any) -> Result<(), FillError>
+    where
+        Vec<T>: 'static,
+    {
+        let Some((first, rest)) = at.split_first() else {
+            return put_whole::<Vec<T>, Self>(self, value);
+        };
+        let index = position(first)?;
+        self.item_for(index, |slot| slot.put_any(rest, value))?;
+        self.touched = true;
+        Ok(())
+    }
+
     fn holds_none(&self, at: &[Segment]) -> bool {
         let Some((first, rest)) = at.split_first() else {
             return false;
@@ -560,7 +611,7 @@ impl<M, V, F: Inspect> Inspect for MapSlot<M, V, F> {
     }
 }
 
-impl<M: TextMap<V>, V, F: Fill<V>> Fill<M> for MapSlot<M, V, F> {
+impl<M: TextMap<V>, V: 'static, F: Fill<V>> Fill<M> for MapSlot<M, V, F> {
     fn set(&mut self, at: &[Segment], text: &str) -> Result<(), FillError> {
         let Some((first, rest)) = at.split_first() else {
             return Err(unsupported("a map is set one key at a time"));
@@ -631,6 +682,30 @@ impl<M: TextMap<V>, V, F: Fill<V>> Fill<M> for MapSlot<M, V, F> {
         complete.then(|| M::collect_entries(built))
     }
 
+    fn put(&mut self, value: M) {
+        self.entries = value
+            .into_entries()
+            .into_iter()
+            .map(|(key, entry)| (key, F::from_value(entry)))
+            .collect();
+        self.touched = true;
+    }
+
+    fn put_any(&mut self, at: &[Segment], value: &mut dyn Any) -> Result<(), FillError>
+    where
+        M: 'static,
+    {
+        let Some((first, rest)) = at.split_first() else {
+            return put_whole::<M, Self>(self, value);
+        };
+        self.entry_for(first.name().into_owned(), |entry| {
+            entry.put_any(rest, value)
+        })
+        .map_err(|e| e.under(first.clone()))?;
+        self.touched = true;
+        Ok(())
+    }
+
     fn holds_none(&self, at: &[Segment]) -> bool {
         let Some((first, rest)) = at.split_first() else {
             return false;
@@ -654,7 +729,7 @@ impl<M: TextMap<V>, V, F: Fill<V>> Fill<M> for MapSlot<M, V, F> {
     }
 }
 
-impl<V: Describe> Describe for BTreeMap<String, V> {
+impl<V: Describe + 'static> Describe for BTreeMap<String, V> {
     type Fill = MapSlot<BTreeMap<String, V>, V, V::Fill>;
 
     fn description() -> Description {
@@ -663,7 +738,7 @@ impl<V: Describe> Describe for BTreeMap<String, V> {
 }
 
 #[cfg(feature = "std")]
-impl<V: Describe, S: core::hash::BuildHasher + Default> Describe
+impl<V: Describe + 'static, S: core::hash::BuildHasher + Default + 'static> Describe
     for std::collections::HashMap<String, V, S>
 {
     type Fill = MapSlot<std::collections::HashMap<String, V, S>, V, V::Fill>;
@@ -677,7 +752,7 @@ impl<V: Describe, S: core::hash::BuildHasher + Default> Describe
 /// struct.
 pub trait Wrap: Sized {
     /// The field's type.
-    type Inner;
+    type Inner: 'static;
     /// The struct holding `inner`.
     fn wrap(inner: Self::Inner) -> Self;
     /// The field.
@@ -736,6 +811,20 @@ impl<T: Wrap, F: Fill<T::Inner>> Fill<T> for Wrapped<T, F> {
 
     fn build(self, at: &KeyPath, missing: &mut Vec<KeyPath>) -> Option<T> {
         self.inner.build(at, missing).map(T::wrap)
+    }
+
+    fn put(&mut self, value: T) {
+        self.inner.put(value.into_inner());
+    }
+
+    fn put_any(&mut self, at: &[Segment], value: &mut dyn Any) -> Result<(), FillError>
+    where
+        T: 'static,
+    {
+        if at.is_empty() && value.is::<Option<T>>() {
+            return put_whole::<T, Self>(self, value);
+        }
+        self.inner.put_any(at, value)
     }
 
     fn holds_none(&self, at: &[Segment]) -> bool {

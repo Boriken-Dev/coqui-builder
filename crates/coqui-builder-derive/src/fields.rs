@@ -47,6 +47,8 @@ pub(crate) struct FieldPlan {
     pub(crate) option: Option<Type>,
     /// A codec to define beside the impls, when the field is `with` or `as_text`.
     pub(crate) codec_def: Option<TokenStream>,
+    /// The field's doc comment, as written.
+    pub(crate) docs: Vec<syn::Attribute>,
 }
 
 /// The last segment of a type's path, as the name a datum of it shows.
@@ -142,6 +144,12 @@ impl FieldPlan {
             shape,
             option,
             codec_def,
+            docs: field
+                .attrs
+                .iter()
+                .filter(|a| a.path().is_ident("doc"))
+                .cloned()
+                .collect(),
         })
     }
 
@@ -449,9 +457,9 @@ impl FieldPlan {
         self.ident.span()
     }
 
-    pub(crate) fn flatten_bound(&self) -> TokenStream {
+    pub(crate) fn flatten_bound(&self, root: &TokenStream) -> TokenStream {
         let ty = &self.ty;
-        quote_spanned!(self.ty.span()=> #ty: __cb::Fields)
+        quote_spanned!(self.ty.span()=> #ty: #root::Fields)
     }
 }
 

@@ -8,7 +8,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::ext::IdentExt;
-use syn::{Fields, Generics, Ident};
+use syn::{Fields, Generics, Ident, Visibility};
 
 use crate::attrs::{ContainerAttrs, FieldAttrs, RESERVED_SETTERS};
 use crate::fields::FieldPlan;
@@ -18,23 +18,38 @@ pub(crate) struct Ctx<'a> {
     pub(crate) name: &'a Ident,
     pub(crate) generics: &'a Generics,
     pub(crate) container: &'a ContainerAttrs,
+    pub(crate) vis: &'a Visibility,
 }
 
 impl Ctx<'_> {
     /// The generics with every type parameter bound by `Describe + Inspect`.
     pub(crate) fn bounded(&self, extra: &[TokenStream]) -> Generics {
+        self.bounded_in(&quote!(__cb), extra)
+    }
+
+    /// The same, naming the crate as `root`: `__cb` inside the anonymous `const`, the crate's
+    /// own path outside it.
+    pub(crate) fn bounded_in(&self, root: &TokenStream, extra: &[TokenStream]) -> Generics {
         let mut generics = self.generics.clone();
         let params: Vec<Ident> = generics.type_params().map(|p| p.ident.clone()).collect();
         let clause = generics.make_where_clause();
         for param in params {
             clause
                 .predicates
-                .push(syn::parse_quote!(#param: __cb::Describe + __cb::Inspect));
+                .push(syn::parse_quote!(#param: #root::Describe + #root::Inspect));
         }
         for bound in extra {
             clause.predicates.push(syn::parse_quote!(#bound));
         }
         generics
+    }
+
+    /// Where `coqui_builder` is, outside the anonymous `const` that renames it `__cb`.
+    pub(crate) fn krate(&self) -> TokenStream {
+        self.container
+            .krate
+            .as_ref()
+            .map_or_else(|| quote!(::coqui_builder), |path| quote!(#path))
     }
 
     /// `PhantomData` over every type parameter, or nothing when there are none.
@@ -50,11 +65,15 @@ impl Ctx<'_> {
     }
 }
 
+/// What a struct expands to: the part inside the anonymous `const`, and the part beside the
+/// struct.
+pub(crate) type Expansion = (TokenStream, TokenStream);
+
 pub(crate) fn expand(
     ctx: &Ctx<'_>,
     fields: &Fields,
     ast_attrs_doc: Option<&String>,
-) -> syn::Result<TokenStream> {
+) -> syn::Result<Expansion> {
     let container = ctx.container;
     if container.deny_unknown_fields && !matches!(fields, Fields::Named(_)) {
         return Err(syn::Error::new_spanned(
@@ -99,12 +118,15 @@ pub(crate) fn expand(
                 .filter(|f| f.ident != field.ident)
                 .filter_map(|f| f.ident.clone())
                 .collect();
-            Ok(wrap(
-                ctx,
-                &field.ty,
-                &syn::Member::Named(field.ident.clone().expect("named")),
-                &skipped,
-                ast_attrs_doc,
+            Ok((
+                wrap(
+                    ctx,
+                    &field.ty,
+                    &syn::Member::Named(field.ident.clone().expect("named")),
+                    &skipped,
+                    ast_attrs_doc,
+                ),
+                TokenStream::new(),
             ))
         }
         Fields::Named(named) => group(ctx, named, ast_attrs_doc),
@@ -130,12 +152,15 @@ pub(crate) fn expand(
                      has no keys. Give the fields names, or hold one type.",
                 ));
             };
-            Ok(wrap(
-                ctx,
-                &only.ty,
-                &syn::Member::Unnamed(syn::Index::from(0)),
-                &[],
-                ast_attrs_doc,
+            Ok((
+                wrap(
+                    ctx,
+                    &only.ty,
+                    &syn::Member::Unnamed(syn::Index::from(0)),
+                    &[],
+                    ast_attrs_doc,
+                ),
+                TokenStream::new(),
             ))
         }
         Fields::Unit => Err(syn::Error::new_spanned(
@@ -199,11 +224,7 @@ fn wrap(
 }
 
 /// A struct of named fields: a group.
-fn group(
-    ctx: &Ctx<'_>,
-    named: &syn::FieldsNamed,
-    doc: Option<&String>,
-) -> syn::Result<TokenStream> {
+fn group(ctx: &Ctx<'_>, named: &syn::FieldsNamed, doc: Option<&String>) -> syn::Result<Expansion> {
     let name = ctx.name;
     let container = ctx.container;
     let mut plans: Vec<FieldPlan> = Vec::new();
@@ -222,7 +243,7 @@ fn group(
         ));
     }
     for plan in &plans {
-        if plan.skipped() || plan.flatten() {
+        if plan.skipped() {
             continue;
         }
         let setter = plan.attrs.setter_name(&plan.ident);
@@ -239,10 +260,14 @@ fn group(
         }
     }
 
+    reject_duplicate_setters(&plans)?;
     let live: Vec<&FieldPlan> = plans.iter().filter(|p| !p.skipped()).collect();
     let flats: Vec<&FieldPlan> = live.iter().copied().filter(|p| p.flatten()).collect();
     let keyed: Vec<&FieldPlan> = live.iter().copied().filter(|p| !p.flatten()).collect();
-    let bounds: Vec<TokenStream> = flats.iter().map(|p| p.flatten_bound()).collect();
+    let bounds: Vec<TokenStream> = flats
+        .iter()
+        .map(|p| p.flatten_bound(&quote!(__cb)))
+        .collect();
     let generics = ctx.bounded(&bounds);
     let (impl_g, ty_g, where_g) = generics.split_for_impl();
     let (marker_decl, marker_init) = ctx.marker();
@@ -356,7 +381,32 @@ fn group(
         }
     });
 
-    // ---- set_default / from_value ----
+    let any_arms = keyed.iter().map(|p| {
+        let ident = &p.ident;
+        let key = &p.key;
+        let ty = &p.ty;
+        quote! {
+            #key => <_ as __cb::Fill<#ty>>::put_any(&mut self.#ident, __rest, __value)
+                .map_err(|e| e.under(__first.clone())),
+        }
+    });
+    let any_flats = flats.iter().map(|p| {
+        let ident = &p.ident;
+        let ty = &p.ty;
+        quote! {
+            match <_ as __cb::Fill<#ty>>::put_any(&mut self.#ident, __at, __value) {
+                ::core::result::Result::Err(e) if e.is_unknown_here() => {}
+                other => return other,
+            }
+        }
+    });
+
+    // ---- set_default / from_value / put ----
+    let put_fields = live.iter().map(|p| {
+        let ident = &p.ident;
+        let ty = &p.ty;
+        quote!(<_ as __cb::Fill<#ty>>::put(&mut self.#ident, #ident);)
+    });
     let all_idents: Vec<&Ident> = live.iter().map(|p| &p.ident).collect();
     let set_default = live.iter().map(|p| {
         let ident = &p.ident;
@@ -521,8 +571,16 @@ fn group(
         quote!(let #name { #(#all_idents,)* .. } = __value;)
     };
 
-    Ok(quote! {
+    let krate = ctx.krate();
+    let outside_bounds: Vec<TokenStream> = flats.iter().map(|p| p.flatten_bound(&krate)).collect();
+    let outside = ctx.bounded_in(&krate, &outside_bounds);
+    let setters = crate::setters::write(ctx, &outside, &live, &krate);
+    let setter_names = &setters.names;
+    let (setters_outside, setters_inside) = (setters.outside, setters.inside);
+    let inside = quote! {
         #(#codecs)*
+
+        #setters_inside
 
         #[doc(hidden)]
         pub struct __Fill #impl_g #where_g {
@@ -649,6 +707,31 @@ fn group(
                 })
             }
 
+            fn put(&mut self, __value: #name #ty_g) {
+                #value_destructure
+                #(#put_fields)*
+            }
+
+            fn put_any(
+                &mut self,
+                __at: &[__cb::Segment],
+                __value: &mut dyn ::core::any::Any,
+            ) -> ::core::result::Result<(), __cb::FillError>
+            where
+                #name #ty_g: 'static,
+            {
+                let ::core::option::Option::Some((__first, __rest)) = __at.split_first() else {
+                    return __cb::fill::put_whole::<#name #ty_g, Self>(self, __value);
+                };
+                match &*__first.name() {
+                    #(#any_arms)*
+                    _ => {
+                        #(#any_flats)*
+                        #flat_unknown
+                    }
+                }
+            }
+
             fn holds_none(&self, __at: &[__cb::Segment]) -> bool {
                 let ::core::option::Option::Some((__first, __rest)) = __at.split_first() else {
                     return false;
@@ -674,6 +757,7 @@ fn group(
         #[automatically_derived]
         impl #impl_g __cb::Describe for #name #ty_g #where_g {
             type Fill = __Fill #ty_g;
+            const __SETTERS: &'static [&'static str] = &[#(#setter_names),*];
             fn description() -> __cb::Description {
                 let mut __fields: __cb::__private::Vec<__cb::describe::Field> =
                     __cb::__private::Vec::new();
@@ -721,7 +805,31 @@ fn group(
                 }
             }
         }
-    })
+    };
+    Ok((inside, setters_outside))
+}
+
+fn reject_duplicate_setters(plans: &[FieldPlan]) -> syn::Result<()> {
+    for (i, plan) in plans.iter().enumerate() {
+        if plan.skipped() {
+            continue;
+        }
+        let setter = plan.attrs.setter_name(&plan.ident);
+        if let Some(earlier) = plans[..i]
+            .iter()
+            .find(|o| !o.skipped() && o.attrs.setter_name(&o.ident) == setter)
+        {
+            return Err(syn::Error::new(
+                plan.span(),
+                format!(
+                    "fields `{}` and `{}` both have the setter `{setter}`. Rename one with \
+                     `#[builder(setter = \"..\")]`.",
+                    earlier.ident, plan.ident
+                ),
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn reject_duplicate_keys(plans: &[FieldPlan]) -> syn::Result<()> {

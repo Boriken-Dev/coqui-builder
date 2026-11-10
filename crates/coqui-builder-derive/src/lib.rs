@@ -54,6 +54,7 @@ mod attrs;
 mod enums;
 mod fields;
 mod rename;
+mod setters;
 mod structs;
 mod untagged;
 
@@ -203,11 +204,12 @@ fn try_expand(input: TokenStream2) -> syn::Result<TokenStream2> {
         name: &ast.ident,
         generics: &ast.generics,
         container: &container,
+        vis: &ast.vis,
     };
     let doc = container.doc.as_ref();
-    let body = match &ast.data {
+    let (body, outside) = match &ast.data {
         Data::Struct(data) => structs::expand(&ctx, &data.fields, doc)?,
-        Data::Enum(data) => enums::expand(&ctx, data, doc)?,
+        Data::Enum(data) => (enums::expand(&ctx, data, doc)?, TokenStream2::new()),
         Data::Union(data) => {
             return Err(syn::Error::new_spanned(
                 data.union_token,
@@ -221,6 +223,8 @@ fn try_expand(input: TokenStream2) -> syn::Result<TokenStream2> {
         .as_ref()
         .map_or_else(|| quote!(::coqui_builder), |path| quote!(#path));
     Ok(quote! {
+        #outside
+
         #[allow(
             non_camel_case_types,
             unused_qualifications,

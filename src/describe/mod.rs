@@ -44,6 +44,10 @@ pub trait Describe: Sized {
     #[doc(hidden)]
     const MIXED: bool = false;
 
+    /// The names of the typed setters the derive wrote for this type.
+    #[doc(hidden)]
+    const __SETTERS: &'static [&'static str] = &[];
+
     /// What this type is.
     fn description() -> Description;
 }

@@ -25,6 +25,7 @@ extern crate std;
 // The derive's output names this crate by `::coqui_builder`, which must resolve inside it too.
 extern crate self as coqui_builder;
 
+pub mod builder;
 pub mod check;
 pub mod datum;
 pub mod describe;
@@ -165,6 +166,26 @@ pub mod __private {
     /// The length of an `Option` of a list, asked at `rest`.
     pub fn entries_opt_list<T>(value: &Option<Vec<T>>, rest: &[Segment]) -> Option<Entries> {
         entries_list(value.as_ref()?, rest)
+    }
+
+    /// Whether `name` is one of `names`.
+    pub const fn contains(names: &[&str], name: &str) -> bool {
+        let wanted = name.as_bytes();
+        let mut at = 0;
+        while at < names.len() {
+            let found = names[at].as_bytes();
+            if found.len() == wanted.len() {
+                let mut i = 0;
+                while i < found.len() && found[i] == wanted[i] {
+                    i += 1;
+                }
+                if i == found.len() {
+                    return true;
+                }
+            }
+            at += 1;
+        }
+        false
     }
 
     /// The value of a single-value arm of an untagged enum that reads `text`.

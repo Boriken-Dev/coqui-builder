@@ -702,6 +702,82 @@ fn tagged(
         }
     }
 
+    // ---- put ----
+    let mut put_arms = Vec::new();
+    for (i, arm) in arms.iter().enumerate() {
+        let v = &arm.ident;
+        match &arm.kind {
+            ArmKind::Unit => put_arms.push(quote! {
+                #name::#v => { self.__arm = ::core::option::Option::Some(#i); }
+            }),
+            ArmKind::Newtype(ty) => {
+                let slot = newtype_slot(i);
+                put_arms.push(quote! {
+                    #name::#v(__v) => {
+                        self.__arm = ::core::option::Option::Some(#i);
+                        <_ as __cb::Fill<#ty>>::put(&mut self.#slot, __v);
+                    }
+                });
+            }
+            ArmKind::Named(plans) => {
+                let idents: Vec<&Ident> = plans
+                    .iter()
+                    .filter(|p| !p.skipped())
+                    .map(|p| &p.ident)
+                    .collect();
+                let puts = plans.iter().filter(|p| !p.skipped()).map(|p| {
+                    let slot = slot_name(i, &p.ident);
+                    let (id, ty) = (&p.ident, &p.ty);
+                    quote!(<_ as __cb::Fill<#ty>>::put(&mut self.#slot, #id);)
+                });
+                put_arms.push(quote! {
+                    #name::#v { #(#idents,)* .. } => {
+                        self.__arm = ::core::option::Option::Some(#i);
+                        #(#puts)*
+                    }
+                });
+            }
+        }
+    }
+
+    // ---- put_any over the arms' fields ----
+    let mut any_fields = Vec::new();
+    for (i, arm) in arms.iter().enumerate() {
+        match &arm.kind {
+            ArmKind::Unit => {}
+            ArmKind::Named(plans) => {
+                for p in plans.iter().filter(|p| !p.skipped()) {
+                    let slot = slot_name(i, &p.ident);
+                    let (key, ty) = (&p.key, &p.ty);
+                    any_fields.push(quote! {
+                        if *__name == *#key && (__pass == 1 || __arm == ::core::option::Option::Some(#i)) {
+                            match <_ as __cb::Fill<#ty>>::put_any(&mut self.#slot, __rest, __value) {
+                                ::core::result::Result::Ok(()) => __accepted = true,
+                                ::core::result::Result::Err(e) => {
+                                    __failure.get_or_insert(e.under(__first.clone()));
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+            ArmKind::Newtype(ty) => {
+                let slot = newtype_slot(i);
+                any_fields.push(quote! {
+                    if !__accepted && (__pass == 1 || __arm == ::core::option::Option::Some(#i)) {
+                        match <_ as __cb::Fill<#ty>>::put_any(&mut self.#slot, __at, __value) {
+                            ::core::result::Result::Ok(()) => __accepted = true,
+                            ::core::result::Result::Err(e) if e.is_unknown_here() => {}
+                            ::core::result::Result::Err(e) => {
+                                __failure.get_or_insert(e);
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    }
+
     // ---- holds_none ----
     let mut none_fields = Vec::new();
     for (i, arm) in arms.iter().enumerate() {
@@ -1119,6 +1195,46 @@ fn tagged(
                 match __arm {
                     #(#build_arms)*
                     _ => ::core::option::Option::None,
+                }
+            }
+
+            fn put(&mut self, __value: #name) {
+                match __value {
+                    #(#put_arms)*
+                }
+            }
+
+            fn put_any(
+                &mut self,
+                __at: &[__cb::Segment],
+                __value: &mut dyn ::core::any::Any,
+            ) -> ::core::result::Result<(), __cb::FillError> {
+                let ::core::option::Option::Some((__first, __rest)) = __at.split_first() else {
+                    return __cb::fill::put_whole::<#name, Self>(self, __value);
+                };
+                let __name = __first.name();
+                if *__name == *#tag_text {
+                    return ::core::result::Result::Err(__cb::FillError::new(
+                        __cb::fill::FillErrorKind::Unsupported("the tag is set with text"),
+                    ));
+                }
+                let mut __accepted = false;
+                let mut __failure: ::core::option::Option<__cb::FillError> = ::core::option::Option::None;
+                // The arm in force takes the value first; another arm with the key takes it
+                // only when that one cannot.
+                let __arm = self.__arm.or(self.__default);
+                for __pass in 0..2 {
+                    #(#any_fields)*
+                    if __accepted {
+                        break;
+                    }
+                }
+                if __accepted {
+                    ::core::result::Result::Ok(())
+                } else {
+                    ::core::result::Result::Err(
+                        __failure.unwrap_or_else(|| __cb::FillError::unknown_key(__first.clone())),
+                    )
                 }
             }
 

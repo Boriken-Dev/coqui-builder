@@ -12,6 +12,7 @@ mod slots;
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::any::Any;
 use core::fmt;
 
 pub use slots::{LeafSlot, ListSlot, MapSlot, OptionSlot, TextMap, Wrap, Wrapped};
@@ -61,11 +62,62 @@ pub trait Fill<T>: Default + Inspect {
     /// A fill with every key set from `value`.
     fn from_value(value: T) -> Self;
 
+    /// Sets every key from `value`, keeping the defaults this fill was given.
+    ///
+    /// The provided body replaces the fill by [`from_value`](Fill::from_value), which keeps
+    /// no default; every fill this crate writes overrides it.
+    fn put(&mut self, value: T) {
+        *self = Self::from_value(value);
+    }
+
+    /// Sets the place at `at` from the typed value that `value` holds (an `Option<V>`, taken
+    /// out when it is used), keeping the defaults the fill was given.
+    ///
+    /// The provided body answers a place that is this fill itself: `at` is empty and the
+    /// value is a `T`. A container routes a longer `at` to its part, and an optional also
+    /// takes the value of the type it holds.
+    ///
+    /// # Errors
+    ///
+    /// [`FillError`] when the key is unknown or the value is not of the type of the place;
+    /// nothing changes then.
+    #[doc(hidden)]
+    fn put_any(&mut self, at: &[Segment], value: &mut dyn Any) -> Result<(), FillError>
+    where
+        T: 'static,
+    {
+        if let Some(first) = at.first() {
+            return Err(FillError::unknown_key(first.clone()));
+        }
+        put_whole::<T, Self>(self, value)
+    }
+
     /// Whether the place at `at` holds an explicit `None`.
     #[doc(hidden)]
     fn holds_none(&self, at: &[Segment]) -> bool {
         let _ = at;
         false
+    }
+}
+
+/// Puts the `T` that `value` holds, an `Option<T>`, into `fill`.
+///
+/// # Errors
+///
+/// [`FillErrorKind::Unsupported`] when the value is of another type; it is left as it was.
+#[doc(hidden)]
+pub fn put_whole<T: 'static, F: Fill<T>>(
+    fill: &mut F,
+    value: &mut dyn Any,
+) -> Result<(), FillError> {
+    match value.downcast_mut::<Option<T>>().and_then(Option::take) {
+        Some(taken) => {
+            fill.put(taken);
+            Ok(())
+        }
+        None => Err(FillError::new(FillErrorKind::Unsupported(
+            "the value is not of the type of this setting",
+        ))),
     }
 }
 

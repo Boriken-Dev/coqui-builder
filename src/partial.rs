@@ -57,6 +57,32 @@ pub struct Partial<T: Describe> {
     pub(crate) description: Description,
 }
 
+impl<T: Describe + 'static> Partial<T> {
+    /// Sets the place at `key` from a typed value, at any depth: `put("limits.total", 5u32)`,
+    /// `put("peers[1]", peer)`, `put("limits", Limits { .. })`. An `Option` place takes the
+    /// value it holds or an `Option` of it. The value is not rendered as text, so the bounds
+    /// the description states for text (`min_length`, `multiple_of`, ..) are not checked.
+    ///
+    /// # Errors
+    ///
+    /// [`FillError`] when the key is not a path, names no setting, or the value is not of the
+    /// type of that place; nothing changes then.
+    pub fn put<V: 'static>(&mut self, key: &str, value: V) -> Result<(), FillError> {
+        let at = parse(key)?;
+        self.put_at(at.segments(), value)
+    }
+
+    /// [`put`](Partial::put) for a key already split into segments.
+    ///
+    /// # Errors
+    ///
+    /// As [`put`](Partial::put).
+    pub fn put_at<V: 'static>(&mut self, at: &[Segment], value: V) -> Result<(), FillError> {
+        let mut slot = Some(value);
+        self.fill.put_any(at, &mut slot)
+    }
+}
+
 impl<T: Describe> Default for Partial<T> {
     fn default() -> Self {
         Partial::new()
@@ -88,6 +114,12 @@ impl<T: Describe> Partial<T> {
     /// What `T` is.
     pub fn description(&self) -> &Description {
         &self.description
+    }
+
+    /// The fill, for generated setters.
+    #[doc(hidden)]
+    pub fn __fill_mut(&mut self) -> &mut T::Fill {
+        &mut self.fill
     }
 
     /// Sets the leaf at `key`, written as a path (`waiting.per_source`, `peers[1].host`), from

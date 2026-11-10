@@ -63,7 +63,7 @@ pub(crate) fn expand(
             ::core::assert!(
                 !<#ty as __cb::Describe>::OPTIONAL,
                 ::core::concat!(
-                    "`", ::core::stringify!(#name), "`: an untagged enum's arm holds a value;                      make the field that holds the enum optional instead"
+                    "`", ::core::stringify!(#name), "`: an untagged enum's arm holds a value; make the field that holds the enum optional instead"
                 )
             );
         }
@@ -79,7 +79,7 @@ pub(crate) fn expand(
             ::core::assert!(
                 __texts > 0,
                 ::core::concat!(
-                    "`", ::core::stringify!(#name), "`: an untagged enum with one arm is that                      arm: use a newtype"
+                    "`", ::core::stringify!(#name), "`: an untagged enum with one arm is that arm: use a newtype"
                 )
             );
             let __structured = 0usize #(#counted)*;
@@ -191,6 +191,53 @@ pub(crate) fn expand(
         }
     });
 
+    let put_units = names.iter().map(|(i, _, _)| {
+        quote! {
+            #name::#i => {
+                self.__text = ::core::option::Option::Some(#name::#i);
+                self.__drop_structured();
+            }
+        }
+    });
+    let put_held = held.iter().enumerate().map(|(i, h)| {
+        let (s, ty, id) = (slot(i), &h.ty, &h.ident);
+        quote! {
+            #name::#id(__v) => {
+                if <#ty as __cb::Describe>::LEAF {
+                    self.__text = ::core::option::Option::Some(#name::#id(__v));
+                    self.__drop_structured();
+                } else {
+                    <_ as __cb::Fill<#ty>>::put(&mut self.#s, __v);
+                    self.__text = ::core::option::Option::None;
+                    self.__structured = true;
+                }
+            }
+        }
+    });
+    let any_text = held.iter().map(|h| {
+        let (ty, id) = (&h.ty, &h.ident);
+        quote! {
+            if <#ty as __cb::Describe>::LEAF {
+                if let ::core::option::Option::Some(__v) = __value
+                    .downcast_mut::<::core::option::Option<#ty>>()
+                    .and_then(::core::option::Option::take)
+                {
+                    <Self as __cb::Fill<#name>>::put(self, #name::#id(__v));
+                    return ::core::result::Result::Ok(());
+                }
+            }
+        }
+    });
+    let any_structured = held.iter().enumerate().map(|(i, h)| {
+        let (s, ty) = (slot(i), &h.ty);
+        quote! {
+            if !<#ty as __cb::Describe>::LEAF {
+                __routed = ::core::option::Option::Some(
+                    <_ as __cb::Fill<#ty>>::put_any(&mut self.#s, __at, __value),
+                );
+            }
+        }
+    });
     let none_routes = held.iter().enumerate().map(|(i, h)| {
         let (s, ty) = (slot(i), &h.ty);
         quote! {
@@ -492,6 +539,50 @@ pub(crate) fn expand(
                 }
                 __missing.push(::core::clone::Clone::clone(__at));
                 ::core::option::Option::None
+            }
+
+            fn put(&mut self, __value: #name) {
+                match __value {
+                    #(#put_units)*
+                    #(#put_held)*
+                }
+            }
+
+            fn put_any(
+                &mut self,
+                __at: &[__cb::Segment],
+                __value: &mut dyn ::core::any::Any,
+            ) -> ::core::result::Result<(), __cb::FillError> {
+                if __at.is_empty() {
+                    if __value.is::<::core::option::Option<#name>>() {
+                        return __cb::fill::put_whole::<#name, Self>(self, __value);
+                    }
+                    #(#any_text)*
+                }
+                let mut __routed: ::core::option::Option<
+                    ::core::result::Result<(), __cb::FillError>,
+                > = ::core::option::Option::None;
+                #(#any_structured)*
+                match __routed {
+                    ::core::option::Option::Some(::core::result::Result::Ok(())) => {
+                        self.__text = ::core::option::Option::None;
+                        self.__structured = true;
+                        ::core::result::Result::Ok(())
+                    }
+                    ::core::option::Option::Some(::core::result::Result::Err(e)) => {
+                        ::core::result::Result::Err(e)
+                    }
+                    ::core::option::Option::None => ::core::result::Result::Err(match __at.first() {
+                        ::core::option::Option::Some(__first) => {
+                            __cb::FillError::unknown_key(__first.clone())
+                        }
+                        ::core::option::Option::None => __cb::FillError::new(
+                            __cb::fill::FillErrorKind::Unsupported(
+                                "the value is not of the type of this setting",
+                            ),
+                        ),
+                    }),
+                }
             }
 
             fn holds_none(&self, __at: &[__cb::Segment]) -> bool {

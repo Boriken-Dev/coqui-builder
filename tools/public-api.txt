@@ -1,6 +1,9 @@
 pub mod coqui_builder
 pub use coqui_builder::Describe
 pub use coqui_builder::Leaf
+pub mod coqui_builder::builder
+pub trait coqui_builder::builder::Holds<S: coqui_builder::describe::Describe>
+pub fn coqui_builder::builder::Holds::partial_mut(&mut self) -> &mut coqui_builder::partial::Partial<S>
 pub mod coqui_builder::check
 pub struct coqui_builder::check::Checks<T: ?core::marker::Sized>
 impl<T: ?core::marker::Sized> coqui_builder::check::Checks<T>
@@ -539,6 +542,7 @@ impl<T, C: coqui_builder::describe::Codec<T>> coqui_builder::fill::Fill<T> for c
 pub fn coqui_builder::fill::LeafSlot<T, C>::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<T>
 pub fn coqui_builder::fill::LeafSlot<T, C>::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::LeafSlot<T, C>::from_value(T) -> Self
+pub fn coqui_builder::fill::LeafSlot<T, C>::put(&mut self, T)
 pub fn coqui_builder::fill::LeafSlot<T, C>::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::LeafSlot<T, C>::set_default(&mut self, T)
 pub fn coqui_builder::fill::LeafSlot<T, C>::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -554,6 +558,7 @@ impl<T, F: coqui_builder::fill::Fill<T>> coqui_builder::fill::Fill<alloc::vec::V
 pub fn coqui_builder::fill::ListSlot<T, F>::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<alloc::vec::Vec<T>>
 pub fn coqui_builder::fill::ListSlot<T, F>::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::ListSlot<T, F>::from_value(alloc::vec::Vec<T>) -> Self
+pub fn coqui_builder::fill::ListSlot<T, F>::put(&mut self, alloc::vec::Vec<T>)
 pub fn coqui_builder::fill::ListSlot<T, F>::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::ListSlot<T, F>::set_default(&mut self, alloc::vec::Vec<T>)
 pub fn coqui_builder::fill::ListSlot<T, F>::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -576,6 +581,7 @@ impl<M: coqui_builder::fill::TextMap<V>, V, F: coqui_builder::fill::Fill<V>> coq
 pub fn coqui_builder::fill::MapSlot<M, V, F>::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<M>
 pub fn coqui_builder::fill::MapSlot<M, V, F>::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::MapSlot<M, V, F>::from_value(M) -> Self
+pub fn coqui_builder::fill::MapSlot<M, V, F>::put(&mut self, M)
 pub fn coqui_builder::fill::MapSlot<M, V, F>::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::MapSlot<M, V, F>::set_default(&mut self, M)
 pub fn coqui_builder::fill::MapSlot<M, V, F>::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -586,6 +592,7 @@ impl<T, F: coqui_builder::fill::Fill<T>> coqui_builder::fill::Fill<core::option:
 pub fn coqui_builder::fill::OptionSlot<T, F>::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<core::option::Option<T>>
 pub fn coqui_builder::fill::OptionSlot<T, F>::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::OptionSlot<T, F>::from_value(core::option::Option<T>) -> Self
+pub fn coqui_builder::fill::OptionSlot<T, F>::put(&mut self, core::option::Option<T>)
 pub fn coqui_builder::fill::OptionSlot<T, F>::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::OptionSlot<T, F>::set_default(&mut self, core::option::Option<T>)
 pub fn coqui_builder::fill::OptionSlot<T, F>::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -601,6 +608,7 @@ impl<T: coqui_builder::fill::Wrap, F: coqui_builder::fill::Fill<<T as coqui_buil
 pub fn coqui_builder::fill::Wrapped<T, F>::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<T>
 pub fn coqui_builder::fill::Wrapped<T, F>::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::Wrapped<T, F>::from_value(T) -> Self
+pub fn coqui_builder::fill::Wrapped<T, F>::put(&mut self, T)
 pub fn coqui_builder::fill::Wrapped<T, F>::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::Wrapped<T, F>::set_default(&mut self, T)
 pub fn coqui_builder::fill::Wrapped<T, F>::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -615,6 +623,7 @@ pub trait coqui_builder::fill::Fill<T>: core::default::Default + coqui_builder::
 pub fn coqui_builder::fill::Fill::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<T>
 pub fn coqui_builder::fill::Fill::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::Fill::from_value(T) -> Self
+pub fn coqui_builder::fill::Fill::put(&mut self, T)
 pub fn coqui_builder::fill::Fill::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::Fill::set_default(&mut self, T)
 pub fn coqui_builder::fill::Fill::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -622,6 +631,7 @@ impl coqui_builder::fill::Fill<coqui_builder::Expect> for coqui_builder::profile
 pub fn coqui_builder::profile::ExpectFill::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<coqui_builder::Expect>
 pub fn coqui_builder::profile::ExpectFill::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ExpectFill::from_value(coqui_builder::Expect) -> Self
+pub fn coqui_builder::profile::ExpectFill::put(&mut self, coqui_builder::Expect)
 pub fn coqui_builder::profile::ExpectFill::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ExpectFill::set_default(&mut self, coqui_builder::Expect)
 pub fn coqui_builder::profile::ExpectFill::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -629,6 +639,7 @@ impl coqui_builder::fill::Fill<coqui_builder::profile::Profile> for coqui_builde
 pub fn coqui_builder::profile::ProfileFill::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<coqui_builder::profile::Profile>
 pub fn coqui_builder::profile::ProfileFill::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ProfileFill::from_value(coqui_builder::profile::Profile) -> Self
+pub fn coqui_builder::profile::ProfileFill::put(&mut self, coqui_builder::profile::Profile)
 pub fn coqui_builder::profile::ProfileFill::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ProfileFill::set_default(&mut self, coqui_builder::profile::Profile)
 pub fn coqui_builder::profile::ProfileFill::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -636,6 +647,7 @@ impl<M: coqui_builder::fill::TextMap<V>, V, F: coqui_builder::fill::Fill<V>> coq
 pub fn coqui_builder::fill::MapSlot<M, V, F>::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<M>
 pub fn coqui_builder::fill::MapSlot<M, V, F>::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::MapSlot<M, V, F>::from_value(M) -> Self
+pub fn coqui_builder::fill::MapSlot<M, V, F>::put(&mut self, M)
 pub fn coqui_builder::fill::MapSlot<M, V, F>::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::MapSlot<M, V, F>::set_default(&mut self, M)
 pub fn coqui_builder::fill::MapSlot<M, V, F>::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -643,6 +655,7 @@ impl<T, C: coqui_builder::describe::Codec<T>> coqui_builder::fill::Fill<T> for c
 pub fn coqui_builder::fill::LeafSlot<T, C>::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<T>
 pub fn coqui_builder::fill::LeafSlot<T, C>::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::LeafSlot<T, C>::from_value(T) -> Self
+pub fn coqui_builder::fill::LeafSlot<T, C>::put(&mut self, T)
 pub fn coqui_builder::fill::LeafSlot<T, C>::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::LeafSlot<T, C>::set_default(&mut self, T)
 pub fn coqui_builder::fill::LeafSlot<T, C>::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -650,6 +663,7 @@ impl<T, F: coqui_builder::fill::Fill<T>> coqui_builder::fill::Fill<alloc::vec::V
 pub fn coqui_builder::fill::ListSlot<T, F>::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<alloc::vec::Vec<T>>
 pub fn coqui_builder::fill::ListSlot<T, F>::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::ListSlot<T, F>::from_value(alloc::vec::Vec<T>) -> Self
+pub fn coqui_builder::fill::ListSlot<T, F>::put(&mut self, alloc::vec::Vec<T>)
 pub fn coqui_builder::fill::ListSlot<T, F>::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::ListSlot<T, F>::set_default(&mut self, alloc::vec::Vec<T>)
 pub fn coqui_builder::fill::ListSlot<T, F>::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -657,6 +671,7 @@ impl<T, F: coqui_builder::fill::Fill<T>> coqui_builder::fill::Fill<core::option:
 pub fn coqui_builder::fill::OptionSlot<T, F>::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<core::option::Option<T>>
 pub fn coqui_builder::fill::OptionSlot<T, F>::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::OptionSlot<T, F>::from_value(core::option::Option<T>) -> Self
+pub fn coqui_builder::fill::OptionSlot<T, F>::put(&mut self, core::option::Option<T>)
 pub fn coqui_builder::fill::OptionSlot<T, F>::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::OptionSlot<T, F>::set_default(&mut self, core::option::Option<T>)
 pub fn coqui_builder::fill::OptionSlot<T, F>::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -664,6 +679,7 @@ impl<T: coqui_builder::fill::Wrap, F: coqui_builder::fill::Fill<<T as coqui_buil
 pub fn coqui_builder::fill::Wrapped<T, F>::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<T>
 pub fn coqui_builder::fill::Wrapped<T, F>::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::Wrapped<T, F>::from_value(T) -> Self
+pub fn coqui_builder::fill::Wrapped<T, F>::put(&mut self, T)
 pub fn coqui_builder::fill::Wrapped<T, F>::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::Wrapped<T, F>::set_default(&mut self, T)
 pub fn coqui_builder::fill::Wrapped<T, F>::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -869,6 +885,7 @@ impl coqui_builder::fill::Fill<coqui_builder::Expect> for coqui_builder::profile
 pub fn coqui_builder::profile::ExpectFill::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<coqui_builder::Expect>
 pub fn coqui_builder::profile::ExpectFill::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ExpectFill::from_value(coqui_builder::Expect) -> Self
+pub fn coqui_builder::profile::ExpectFill::put(&mut self, coqui_builder::Expect)
 pub fn coqui_builder::profile::ExpectFill::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ExpectFill::set_default(&mut self, coqui_builder::Expect)
 pub fn coqui_builder::profile::ExpectFill::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -887,6 +904,7 @@ impl coqui_builder::fill::Fill<coqui_builder::Expect> for coqui_builder::profile
 pub fn coqui_builder::profile::ExpectFill::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<coqui_builder::Expect>
 pub fn coqui_builder::profile::ExpectFill::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ExpectFill::from_value(coqui_builder::Expect) -> Self
+pub fn coqui_builder::profile::ExpectFill::put(&mut self, coqui_builder::Expect)
 pub fn coqui_builder::profile::ExpectFill::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ExpectFill::set_default(&mut self, coqui_builder::Expect)
 pub fn coqui_builder::profile::ExpectFill::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -918,6 +936,7 @@ impl coqui_builder::fill::Fill<coqui_builder::profile::Profile> for coqui_builde
 pub fn coqui_builder::profile::ProfileFill::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<coqui_builder::profile::Profile>
 pub fn coqui_builder::profile::ProfileFill::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ProfileFill::from_value(coqui_builder::profile::Profile) -> Self
+pub fn coqui_builder::profile::ProfileFill::put(&mut self, coqui_builder::profile::Profile)
 pub fn coqui_builder::profile::ProfileFill::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ProfileFill::set_default(&mut self, coqui_builder::profile::Profile)
 pub fn coqui_builder::profile::ProfileFill::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -932,6 +951,7 @@ impl coqui_builder::fill::Fill<coqui_builder::profile::Profile> for coqui_builde
 pub fn coqui_builder::profile::ProfileFill::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<coqui_builder::profile::Profile>
 pub fn coqui_builder::profile::ProfileFill::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ProfileFill::from_value(coqui_builder::profile::Profile) -> Self
+pub fn coqui_builder::profile::ProfileFill::put(&mut self, coqui_builder::profile::Profile)
 pub fn coqui_builder::profile::ProfileFill::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ProfileFill::set_default(&mut self, coqui_builder::profile::Profile)
 pub fn coqui_builder::profile::ProfileFill::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -1028,6 +1048,7 @@ impl coqui_builder::fill::Fill<coqui_builder::Expect> for coqui_builder::profile
 pub fn coqui_builder::profile::ExpectFill::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<coqui_builder::Expect>
 pub fn coqui_builder::profile::ExpectFill::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ExpectFill::from_value(coqui_builder::Expect) -> Self
+pub fn coqui_builder::profile::ExpectFill::put(&mut self, coqui_builder::Expect)
 pub fn coqui_builder::profile::ExpectFill::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ExpectFill::set_default(&mut self, coqui_builder::Expect)
 pub fn coqui_builder::profile::ExpectFill::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -1274,6 +1295,7 @@ impl coqui_builder::fill::Fill<coqui_builder::profile::Profile> for coqui_builde
 pub fn coqui_builder::profile::ProfileFill::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<coqui_builder::profile::Profile>
 pub fn coqui_builder::profile::ProfileFill::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ProfileFill::from_value(coqui_builder::profile::Profile) -> Self
+pub fn coqui_builder::profile::ProfileFill::put(&mut self, coqui_builder::profile::Profile)
 pub fn coqui_builder::profile::ProfileFill::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ProfileFill::set_default(&mut self, coqui_builder::profile::Profile)
 pub fn coqui_builder::profile::ProfileFill::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -1367,6 +1389,7 @@ pub trait coqui_builder::Fill<T>: core::default::Default + coqui_builder::inspec
 pub fn coqui_builder::Fill::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<T>
 pub fn coqui_builder::Fill::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::Fill::from_value(T) -> Self
+pub fn coqui_builder::Fill::put(&mut self, T)
 pub fn coqui_builder::Fill::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::Fill::set_default(&mut self, T)
 pub fn coqui_builder::Fill::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -1374,6 +1397,7 @@ impl coqui_builder::fill::Fill<coqui_builder::Expect> for coqui_builder::profile
 pub fn coqui_builder::profile::ExpectFill::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<coqui_builder::Expect>
 pub fn coqui_builder::profile::ExpectFill::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ExpectFill::from_value(coqui_builder::Expect) -> Self
+pub fn coqui_builder::profile::ExpectFill::put(&mut self, coqui_builder::Expect)
 pub fn coqui_builder::profile::ExpectFill::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ExpectFill::set_default(&mut self, coqui_builder::Expect)
 pub fn coqui_builder::profile::ExpectFill::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -1381,6 +1405,7 @@ impl coqui_builder::fill::Fill<coqui_builder::profile::Profile> for coqui_builde
 pub fn coqui_builder::profile::ProfileFill::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<coqui_builder::profile::Profile>
 pub fn coqui_builder::profile::ProfileFill::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ProfileFill::from_value(coqui_builder::profile::Profile) -> Self
+pub fn coqui_builder::profile::ProfileFill::put(&mut self, coqui_builder::profile::Profile)
 pub fn coqui_builder::profile::ProfileFill::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::profile::ProfileFill::set_default(&mut self, coqui_builder::profile::Profile)
 pub fn coqui_builder::profile::ProfileFill::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -1388,6 +1413,7 @@ impl<M: coqui_builder::fill::TextMap<V>, V, F: coqui_builder::fill::Fill<V>> coq
 pub fn coqui_builder::fill::MapSlot<M, V, F>::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<M>
 pub fn coqui_builder::fill::MapSlot<M, V, F>::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::MapSlot<M, V, F>::from_value(M) -> Self
+pub fn coqui_builder::fill::MapSlot<M, V, F>::put(&mut self, M)
 pub fn coqui_builder::fill::MapSlot<M, V, F>::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::MapSlot<M, V, F>::set_default(&mut self, M)
 pub fn coqui_builder::fill::MapSlot<M, V, F>::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -1395,6 +1421,7 @@ impl<T, C: coqui_builder::describe::Codec<T>> coqui_builder::fill::Fill<T> for c
 pub fn coqui_builder::fill::LeafSlot<T, C>::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<T>
 pub fn coqui_builder::fill::LeafSlot<T, C>::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::LeafSlot<T, C>::from_value(T) -> Self
+pub fn coqui_builder::fill::LeafSlot<T, C>::put(&mut self, T)
 pub fn coqui_builder::fill::LeafSlot<T, C>::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::LeafSlot<T, C>::set_default(&mut self, T)
 pub fn coqui_builder::fill::LeafSlot<T, C>::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -1402,6 +1429,7 @@ impl<T, F: coqui_builder::fill::Fill<T>> coqui_builder::fill::Fill<alloc::vec::V
 pub fn coqui_builder::fill::ListSlot<T, F>::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<alloc::vec::Vec<T>>
 pub fn coqui_builder::fill::ListSlot<T, F>::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::ListSlot<T, F>::from_value(alloc::vec::Vec<T>) -> Self
+pub fn coqui_builder::fill::ListSlot<T, F>::put(&mut self, alloc::vec::Vec<T>)
 pub fn coqui_builder::fill::ListSlot<T, F>::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::ListSlot<T, F>::set_default(&mut self, alloc::vec::Vec<T>)
 pub fn coqui_builder::fill::ListSlot<T, F>::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -1409,6 +1437,7 @@ impl<T, F: coqui_builder::fill::Fill<T>> coqui_builder::fill::Fill<core::option:
 pub fn coqui_builder::fill::OptionSlot<T, F>::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<core::option::Option<T>>
 pub fn coqui_builder::fill::OptionSlot<T, F>::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::OptionSlot<T, F>::from_value(core::option::Option<T>) -> Self
+pub fn coqui_builder::fill::OptionSlot<T, F>::put(&mut self, core::option::Option<T>)
 pub fn coqui_builder::fill::OptionSlot<T, F>::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::OptionSlot<T, F>::set_default(&mut self, core::option::Option<T>)
 pub fn coqui_builder::fill::OptionSlot<T, F>::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
@@ -1416,6 +1445,7 @@ impl<T: coqui_builder::fill::Wrap, F: coqui_builder::fill::Fill<<T as coqui_buil
 pub fn coqui_builder::fill::Wrapped<T, F>::build(self, &coqui_builder::path::KeyPath, &mut alloc::vec::Vec<coqui_builder::path::KeyPath>) -> core::option::Option<T>
 pub fn coqui_builder::fill::Wrapped<T, F>::clear(&mut self, &[coqui_builder::path::Segment]) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::Wrapped<T, F>::from_value(T) -> Self
+pub fn coqui_builder::fill::Wrapped<T, F>::put(&mut self, T)
 pub fn coqui_builder::fill::Wrapped<T, F>::set(&mut self, &[coqui_builder::path::Segment], &str) -> core::result::Result<(), coqui_builder::fill::FillError>
 pub fn coqui_builder::fill::Wrapped<T, F>::set_default(&mut self, T)
 pub fn coqui_builder::fill::Wrapped<T, F>::set_items(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>

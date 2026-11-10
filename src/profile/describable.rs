@@ -261,6 +261,39 @@ impl Fill<Expect> for ExpectFill {
         }
     }
 
+    fn put_any(&mut self, at: &[Segment], value: &mut dyn core::any::Any) -> Result<(), FillError> {
+        let Some((first, rest)) = at.split_first() else {
+            return crate::fill::put_whole::<Expect, Self>(self, value);
+        };
+        let under = |e: FillError| e.under(first.clone());
+        match &*first.name() {
+            "value" => Fill::<String>::put_any(&mut self.value, rest, value).map_err(under),
+            "min" => Fill::<Option<String>>::put_any(&mut self.min, rest, value).map_err(under),
+            "max" => Fill::<Option<String>>::put_any(&mut self.max, rest, value).map_err(under),
+            "values" => Fill::<Vec<String>>::put_any(&mut self.values, rest, value).map_err(under),
+            "names" => Fill::<Vec<String>>::put_any(&mut self.names, rest, value).map_err(under),
+            _ => Err(FillError::unknown_key(first.clone())),
+        }
+    }
+
+    fn put(&mut self, value: Expect) {
+        self.arm = Some(arm_of(&value));
+        match value {
+            Expect::Equal(v) | Expect::AsStrictAs(v) | Expect::NoStricterThan(v) => {
+                Fill::<String>::put(&mut self.value, v);
+            }
+            Expect::Within { min, max } => {
+                Fill::<Option<String>>::put(&mut self.min, min);
+                Fill::<Option<String>>::put(&mut self.max, max);
+            }
+            Expect::OneOf(v) | Expect::SubsetOf(v) | Expect::ItemsEqual(v) => {
+                Fill::<Vec<String>>::put(&mut self.values, v);
+            }
+            Expect::Arms(v) => Fill::<Vec<String>>::put(&mut self.names, v),
+            Expect::Required | Expect::Absent | Expect::Any => {}
+        }
+    }
+
     fn holds_none(&self, at: &[Segment]) -> bool {
         let Some((first, rest)) = at.split_first() else {
             return false;
@@ -436,6 +469,17 @@ impl Fill<Profile> for ProfileFill {
             }
         }
         complete.then_some(profile)
+    }
+
+    fn put(&mut self, value: Profile) {
+        self.entries.put(entries_of(value));
+    }
+
+    fn put_any(&mut self, at: &[Segment], value: &mut dyn core::any::Any) -> Result<(), FillError> {
+        if at.is_empty() {
+            return crate::fill::put_whole::<Profile, Self>(self, value);
+        }
+        self.entries.put_any(at, value)
     }
 
     fn holds_none(&self, at: &[Segment]) -> bool {

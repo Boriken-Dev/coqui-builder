@@ -4,9 +4,11 @@
 
 //! `Partial`: the order keys are set in, what text sets, what a refused key leaves alone.
 
+use std::collections::BTreeMap;
 use std::net::Ipv4Addr;
 use std::time::Duration;
 
+use coqui_builder::fill::FillErrorKind;
 use coqui_builder::{Datum, Describe, Inspect, KeyPath, Missing, Partial};
 
 #[derive(Describe, Debug, Clone, PartialEq)]
@@ -387,4 +389,277 @@ fn a_step_is_checked_past_the_range_of_a_64_bit_integer() {
     let mut p = Partial::<Steps>::new();
     p.set("big", "100000000000000000000").unwrap();
     assert_eq!(p.build().unwrap().big, 100_000_000_000_000_000_000);
+}
+
+// ---- put: every key from a value, keeping the defaults ----
+
+#[derive(Describe, Debug, Clone, PartialEq)]
+struct Held {
+    #[map(default = 5)]
+    n: u8,
+    #[map(default = Port::Auto)]
+    port: Port,
+    #[map(default = vec!["d".to_string()])]
+    tags: Vec<String>,
+    opt: Option<u8>,
+    mode: Mode,
+}
+
+fn held(n: u8) -> Held {
+    Held {
+        n,
+        port: Port::Number(80),
+        tags: vec!["x".into(), "y".into()],
+        opt: Some(1),
+        mode: Mode::Slow {
+            delay: Duration::from_secs(2),
+        },
+    }
+}
+
+#[test]
+fn put_sets_every_key_and_clear_reads_the_default_again() {
+    use coqui_builder::Fill;
+    let mut p = Partial::<Held>::new();
+    p.set("n", "1").unwrap();
+    p.set("mode.kind", "Fast").unwrap();
+    p.set("mode.level", "3").unwrap();
+    Fill::put(p.__fill_mut(), held(9));
+    assert_eq!(p.at(&key("n")), Some(Datum::new("u8", "9")));
+    assert_eq!(p.at(&key("port")), Some(Datum::new("Port", "80")));
+    assert_eq!(p.at(&key("mode.kind")), Some(Datum::new("String", "Slow")));
+    let mut again = Partial::<Held>::new();
+    Fill::put(again.__fill_mut(), held(9));
+    assert_eq!(again.build().unwrap(), held(9));
+
+    // The defaults the fill was given survive: clearing a key reads the default, and the
+    // build has it.
+    p.clear("n").unwrap();
+    p.clear("port").unwrap();
+    p.clear("tags").unwrap();
+    p.clear("opt").unwrap();
+    let built = p.build().unwrap();
+    assert_eq!(built.n, 5);
+    assert_eq!(built.port, Port::Auto);
+    assert_eq!(built.tags, ["d"]);
+    assert_eq!(built.opt, None);
+}
+
+#[test]
+fn put_of_a_none_forgets_what_an_option_held_and_put_after_it_sets_again() {
+    use coqui_builder::Fill;
+    let mut p = Partial::<Held>::new();
+    p.set("opt", "4").unwrap();
+    let mut value = held(1);
+    value.opt = None;
+    Fill::put(p.__fill_mut(), value);
+    assert_eq!(p.at(&key("opt")), None);
+    Fill::put(p.__fill_mut(), held(1));
+    assert_eq!(p.at(&key("opt")), Some(Datum::new("u8", "1")));
+}
+
+// ---- Partial::put: a typed value at any path ----
+
+#[derive(Describe, Debug, Clone, PartialEq)]
+struct Waiting {
+    #[map(default = 10)]
+    total: u32,
+    #[map(default = Duration::from_secs(1))]
+    interval: Duration,
+}
+
+#[derive(Describe, Debug, Clone, PartialEq)]
+struct Peer {
+    host: String,
+    #[map(default = 1)]
+    weight: u8,
+}
+
+#[derive(Describe, Debug, Clone, PartialEq)]
+struct CacheTable {
+    ttl: u32,
+}
+
+#[derive(Describe, Debug, Clone, PartialEq)]
+#[map(untagged)]
+enum Caching {
+    Off,
+    Flag(bool),
+    Table(CacheTable),
+}
+
+#[derive(Describe, Debug, Clone, PartialEq)]
+struct Typed {
+    waiting: Waiting,
+    peers: Vec<Peer>,
+    by_name: BTreeMap<String, Peer>,
+    cache: Caching,
+    cap: Option<Waiting>,
+}
+
+fn typed() -> Partial<Typed> {
+    let mut p = Partial::new();
+    p.put(
+        "waiting",
+        Waiting {
+            total: 1,
+            interval: Duration::from_secs(2),
+        },
+    )
+    .unwrap();
+    p.put("peers", Vec::<Peer>::new()).unwrap();
+    p.put("by_name", BTreeMap::<String, Peer>::new()).unwrap();
+    p.put("cache", Caching::Off).unwrap();
+    p
+}
+
+#[test]
+fn put_sets_a_nested_key_a_list_item_and_a_map_entry_by_type() {
+    let mut p = typed();
+    p.put("waiting.total", 7u32).unwrap();
+    p.put("waiting.interval", Duration::from_millis(250))
+        .unwrap();
+    p.put(
+        "peers[0]",
+        Peer {
+            host: "a".into(),
+            weight: 2,
+        },
+    )
+    .unwrap();
+    p.put("peers[0].weight", 5u8).unwrap();
+    p.put(
+        "by_name[x]",
+        Peer {
+            host: "h".into(),
+            weight: 1,
+        },
+    )
+    .unwrap();
+    p.put("by_name[x].host", "hh".to_owned()).unwrap();
+    let built = p.build().unwrap();
+    assert_eq!(built.waiting.total, 7);
+    assert_eq!(built.waiting.interval, Duration::from_millis(250));
+    assert_eq!(built.peers.len(), 1);
+    assert_eq!(built.peers[0].weight, 5);
+    assert_eq!(built.by_name["x"].host, "hh");
+}
+
+#[test]
+fn put_chooses_an_untagged_arm_by_the_type_it_is_given() {
+    let mut p = typed();
+    p.put("cache", true).unwrap();
+    assert_eq!(p.build().unwrap().cache, Caching::Flag(true));
+    let mut p = typed();
+    p.put("cache", CacheTable { ttl: 3 }).unwrap();
+    assert_eq!(
+        p.build().unwrap().cache,
+        Caching::Table(CacheTable { ttl: 3 })
+    );
+    let mut p = typed();
+    p.put("cache.ttl", 9u32).unwrap();
+    assert_eq!(
+        p.build().unwrap().cache,
+        Caching::Table(CacheTable { ttl: 9 })
+    );
+    let mut p = typed();
+    p.put("cache", Caching::Flag(false)).unwrap();
+    p.put("cache", CacheTable { ttl: 1 }).unwrap();
+    p.put("cache", Caching::Off).unwrap();
+    assert_eq!(p.build().unwrap().cache, Caching::Off);
+}
+
+#[test]
+fn put_into_an_optional_takes_the_value_or_an_option_of_it() {
+    let mut p = typed();
+    p.put(
+        "cap",
+        Waiting {
+            total: 2,
+            interval: Duration::ZERO,
+        },
+    )
+    .unwrap();
+    assert_eq!(p.build().unwrap().cap.unwrap().total, 2);
+    let mut p = typed();
+    p.put("cap.total", 4u32).unwrap();
+    assert_eq!(p.build().unwrap().cap.unwrap().total, 4);
+    let mut p = typed();
+    p.put(
+        "cap",
+        Some(Waiting {
+            total: 6,
+            interval: Duration::ZERO,
+        }),
+    )
+    .unwrap();
+    p.put("cap", None::<Waiting>).unwrap();
+    assert_eq!(p.build().unwrap().cap, None);
+}
+
+#[test]
+fn put_refuses_a_value_of_the_wrong_type_and_an_unknown_key_and_changes_nothing() {
+    let mut p = typed();
+    p.put("waiting.total", 7u32).unwrap();
+    let wrong = p.put("waiting.total", "7".to_owned()).unwrap_err();
+    assert!(matches!(wrong.kind(), FillErrorKind::Unsupported(_)));
+    assert!(p.put("waiting.total", 7u8).is_err());
+    assert!(p.put("waiting", 7u32).is_err());
+    let unknown = p.put("waiting.nope", 1u32).unwrap_err();
+    assert_eq!(unknown.kind(), &FillErrorKind::UnknownKey);
+    assert_eq!(unknown.at().to_string(), "waiting.nope");
+    assert!(p.put("nope", 1u32).is_err());
+    assert!(p.put("peers[0].nope", 1u32).is_err());
+    assert!(p.put("not a path[", 1u32).is_err());
+    assert_eq!(p.build().unwrap().waiting.total, 7);
+}
+
+#[derive(Describe, Debug, Clone, PartialEq)]
+#[map(tag = "kind")]
+enum Shared {
+    Fast { level: u8 },
+    Slow { level: u8, delay: Duration },
+}
+
+#[derive(Describe, Debug, Clone, PartialEq)]
+struct Sharing {
+    mode: Shared,
+}
+
+#[test]
+fn put_gives_a_key_two_arms_share_to_the_arm_in_force() {
+    let mut p = Partial::<Sharing>::new();
+    p.set("mode.kind", "Slow").unwrap();
+    p.put("mode.level", 3u8).unwrap();
+    p.set("mode.delay", "1s").unwrap();
+    assert_eq!(
+        p.build().unwrap().mode,
+        Shared::Slow {
+            level: 3,
+            delay: Duration::from_secs(1)
+        }
+    );
+    // With no arm chosen the first arm that has the key takes it.
+    let mut p = Partial::<Sharing>::new();
+    p.put("mode.level", 4u8).unwrap();
+    p.set("mode.kind", "Fast").unwrap();
+    assert_eq!(p.build().unwrap().mode, Shared::Fast { level: 4 });
+}
+
+struct NotDescribed;
+
+#[test]
+fn put_takes_any_value_and_refuses_one_that_is_not_the_places() {
+    let mut p = typed();
+    assert!(p.put("waiting.total", NotDescribed).is_err());
+}
+
+#[test]
+fn put_below_an_expectation_of_a_profile_reaches_its_parts() {
+    use coqui_builder::Expect;
+    let mut p = Partial::<Expect>::new();
+    p.set("expect", "equal").unwrap();
+    p.put("value", "30s".to_owned()).unwrap();
+    assert!(p.put("nope", 1u8).is_err());
+    assert_eq!(p.build().unwrap(), Expect::Equal("30s".into()));
 }

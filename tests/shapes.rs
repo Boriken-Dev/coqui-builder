@@ -688,3 +688,125 @@ struct Doubled {
 fn a_flattened_member_repeating_a_key_is_caught_when_the_description_is_built() {
     let _ = Doubled::description();
 }
+
+// ---- typed setters ----
+
+mod config {
+    use coqui_builder::Describe;
+
+    #[derive(Describe, Debug, Clone, PartialEq)]
+    pub struct Core {
+        pub depth: u8,
+    }
+
+    #[derive(Describe, Debug, Clone, PartialEq)]
+    pub struct Conf {
+        /// The name to answer to.
+        pub name: String,
+        #[map(default = 3)]
+        pub count: u8,
+        #[map(default)]
+        pub tags: Vec<String>,
+        pub opt: Option<u8>,
+        #[map(rename = "type")]
+        pub r#type: String,
+        #[builder(setter = "with_new")]
+        #[map(default)]
+        pub new: bool,
+        #[map(flatten)]
+        pub core: Core,
+        #[map(skip)]
+        pub hidden: u8,
+        #[cfg(any())]
+        pub gone: u8,
+    }
+
+    #[derive(Describe, Debug, Clone, PartialEq)]
+    pub struct Twosome<T> {
+        pub first: T,
+        #[map(default = 7)]
+        pub second: u8,
+    }
+}
+
+use config::{Conf, ConfSetters, Core, Twosome, TwosomeSetters};
+use coqui_builder::builder::Holds;
+
+struct Hand<S: Describe>(Partial<S>);
+
+impl<S: Describe> Holds<S> for Hand<S> {
+    fn partial_mut(&mut self) -> &mut Partial<S> {
+        &mut self.0
+    }
+}
+
+fn hand() -> Hand<Conf> {
+    Hand(Partial::new())
+}
+
+#[test]
+fn a_setter_per_setting_puts_its_value_and_the_last_call_wins() {
+    let mut built = hand()
+        .name("n")
+        .count(1u8)
+        .count(2u8)
+        .tags(vec!["a".to_owned()])
+        .opt(5u8)
+        .r#type("t")
+        .with_new(true)
+        .core(Core { depth: 4 });
+    let conf = built.partial_mut();
+    assert_eq!(conf.at(&path("count")), Some(Datum::new("u8", "2")));
+    let conf = built.0.build().unwrap();
+    assert_eq!(
+        conf,
+        Conf {
+            name: "n".into(),
+            count: 2,
+            tags: vec!["a".into()],
+            opt: Some(5),
+            r#type: "t".into(),
+            new: true,
+            core: Core { depth: 4 },
+            hidden: 0,
+        }
+    );
+}
+
+#[test]
+fn a_setter_after_a_text_wins_and_a_text_after_a_setter_wins() {
+    let mut built = hand().count(1u8);
+    built.0.set("count", "9").unwrap();
+    assert_eq!(built.0.at(&path("count")), Some(Datum::new("u8", "9")));
+    let built = built.count(4u8);
+    assert_eq!(built.0.at(&path("count")), Some(Datum::new("u8", "4")));
+}
+
+#[test]
+fn an_option_setting_takes_the_value_or_none() {
+    let built = hand().opt(None::<u8>);
+    assert_eq!(built.0.at(&path("opt")), None);
+    let built = built.opt(3u8);
+    assert_eq!(built.0.at(&path("opt")), Some(Datum::new("u8", "3")));
+}
+
+#[test]
+fn a_generic_settings_type_has_a_generic_setters_trait() {
+    let built = Hand(Partial::<Twosome<u16>>::new()).first(5u16).second(1u8);
+    assert_eq!(
+        built.0.build().unwrap(),
+        Twosome {
+            first: 5,
+            second: 1
+        }
+    );
+}
+
+#[test]
+fn the_derive_names_its_setters_for_the_builder_derive_to_check() {
+    assert_eq!(
+        <Conf as Describe>::__SETTERS,
+        ["name", "count", "tags", "opt", "type", "with_new", "core"]
+    );
+    assert!(<Core as Describe>::__SETTERS.contains(&"depth"));
+}
