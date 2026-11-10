@@ -52,7 +52,7 @@ pub(crate) const SCHEMA_CHOICE_KEYS: &[&str] = &["label"];
 /// Keys of `#[builder(..)]` on a field.
 pub(crate) const BUILDER_FIELD_KEYS: &[&str] = &["stricter", "setter"];
 /// Keys of `#[builder(..)]` on a type.
-pub(crate) const BUILDER_TYPE_KEYS: &[&str] = &["crate"];
+pub(crate) const BUILDER_TYPE_KEYS: &[&str] = &["crate", "setters_on"];
 
 /// Method names every builder has: a setting cannot take one for its setter.
 pub(crate) const RESERVED_SETTERS: &[&str] = &[
@@ -122,9 +122,17 @@ pub(crate) struct FieldAttrs {
     pub(crate) setter: Option<String>,
 }
 
+/// A builder that gets the settings' setters as inherent methods: `setters_on = XBuilder` or
+/// `setters_on = <'a, C: Channel> XBuilder<'a, C>`.
+pub(crate) struct SettersOn {
+    pub(crate) generics: syn::Generics,
+    pub(crate) ty: syn::Type,
+}
+
 /// What a type declares.
 #[derive(Default)]
 pub(crate) struct ContainerAttrs {
+    pub(crate) setters_on: Vec<SettersOn>,
     pub(crate) rename_all: Option<RenameRule>,
     pub(crate) transparent: bool,
     pub(crate) deny_unknown_fields: bool,
@@ -517,6 +525,17 @@ impl ContainerAttrs {
                 attr.parse_nested_meta(|meta| {
                     if meta.path.is_ident("crate") {
                         out.krate = Some(meta.value()?.parse()?);
+                        Ok(())
+                    } else if meta.path.is_ident("setters_on") {
+                        let value = meta.value()?;
+                        let generics: syn::Generics = value.parse()?;
+                        let ty: syn::Type = value.parse().map_err(|e| {
+                            syn::Error::new(
+                                e.span(),
+                                "`setters_on` takes the type of a builder in this crate: `setters_on = XBuilder`, or with generics `setters_on = <'a, C: Trait> XBuilder<'a, C>`",
+                            )
+                        })?;
+                        out.setters_on.push(SettersOn { generics, ty });
                         Ok(())
                     } else {
                         Err(meta.error(format!(

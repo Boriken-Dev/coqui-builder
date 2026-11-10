@@ -482,6 +482,7 @@ names the type a datum shows, `#[leaf(ordered)]` takes the order from `PartialOr
 | `#[schema(title, description)]`, `#[schema(label)]` | arm, unit variant | as named; a unit variant's `label` (else its doc comment) is in `LeafInfo::labels`, also on an untagged enum's unit variants |
 | `#[builder(stricter = "higher" \| "lower")]`, `#[builder(setter = "name")]` | field | the order; the setter's method name |
 | `#[builder(crate = path)]` | type | where `coqui_builder` is re-exported |
+| `#[builder(setters_on = Type)]`, `#[builder(setters_on = <'a, C: Tr> Type<'a, C>)]` | struct with setters | repeatable; an inherent `impl` on that builder with every setter (same names, docs and argument types as the trait's, each delegating to it), so a caller needs no import. The impl must be in the builder's crate (a foreign builder is E0116); the trait stays for those. Refused on an enum, a newtype, a transparent struct and a generic settings type |
 
 `#[map(crate = ..)]`, guatiao's spelling, is read and ignored. A setting whose setter would
 be `build`, `parts`, `fill`, `fill_from`, `builder`, `new`, `configured`, `non_defaults`,

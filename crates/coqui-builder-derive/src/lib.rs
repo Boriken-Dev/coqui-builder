@@ -235,6 +235,12 @@ fn try_expand(input: TokenStream2) -> syn::Result<TokenStream2> {
     }
     let is_enum = matches!(ast.data, Data::Enum(_));
     let container = ContainerAttrs::read(&ast.attrs, is_enum)?;
+    if let (false, Some(param)) = (container.setters_on.is_empty(), ast.generics.params.first()) {
+        return Err(syn::Error::new_spanned(
+            param,
+            "`#[builder(setters_on = ..)]` is not written for a settings type with generic parameters: name the builder's setters by hand",
+        ));
+    }
     let ctx = Ctx {
         name: &ast.ident,
         generics: &ast.generics,
@@ -253,6 +259,12 @@ fn try_expand(input: TokenStream2) -> syn::Result<TokenStream2> {
             ));
         }
     };
+    if !container.setters_on.is_empty() && outside.is_empty() {
+        return Err(syn::Error::new(
+            ast.ident.span(),
+            "`#[builder(setters_on = ..)]` belongs on a struct with named fields, which is the one that has setters: not an enum, a newtype or a `#[map(transparent)]` struct",
+        ));
+    }
     let krate = container
         .krate
         .as_ref()

@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `#[builder(setters_on = XBuilder)]` on a settings struct (repeatable, `<'a, C: Tr> XBuilder<'a, C>` for a
+  generic builder) writes the setters as inherent methods of a builder in the same crate, so callers need
+  no import of `<Name>Setters`. The trait remains for builders in other crates.
 - `Datum`, a type name and a text (`u32(64)`, printed `String(***)` for a secret), and `Shown`
   (unset, one datum or a list of them): what a finding or a non-default holds. `KeyPath` /
   `Segment`: the path grammar `agent[1].name`, `env["a.b"]`, parsed and written so that every

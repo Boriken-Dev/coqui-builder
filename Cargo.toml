@@ -137,3 +137,11 @@ required-features = ["serde", "derive"]
 [[test]]
 name = "settings_shapes"
 required-features = ["derive", "std"]
+
+[[test]]
+name = "primitive_setters"
+required-features = ["derive", "std"]
+
+[[test]]
+name = "setters_on"
+required-features = ["derive", "std"]

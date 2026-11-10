@@ -187,6 +187,11 @@ impl TryFrom<ServerParts<'_>> for Built<ServerConfig> {
   setting (or input) written as a primitive scalar (`bool`, `char`, the integers, `f32`, `f64`)
   takes that type itself, so `.max(8)` needs no suffix; a caller that passed another type through
   `Into` (a `u8` into a `u16` field) now converts it first.
+- **Setters without an import.** When the settings and the builder live in the same crate, put
+  `#[builder(setters_on = XBuilder)]` on the settings (repeat it for each builder that holds them;
+  `<'a, C: Trait> XBuilder<'a, C>` for a generic one): the setters become inherent methods of the
+  builder and callers import nothing. An inherent `impl` must be in the builder's own crate, so for a
+  builder elsewhere (E0116 otherwise) re-export `<Name>Setters` from the crate's prelude.
 - **Inputs** are every other field, marked `#[builder(input)]`: a value with no text form,
   a borrowed value, code. An input of type `Option<J>` is optional; every other input is required
   and `build` names it if it is missing, together with every missing setting.

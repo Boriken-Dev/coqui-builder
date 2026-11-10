@@ -88,7 +88,15 @@ comment is the description unless one is given. On a tagged variant: `title`, `d
 on a unit variant: `label`.
 
 `#[builder(..)]` on a field: `stricter = "higher" | "lower"`, `setter = "name"`. On a type:
-`crate = path`.
+`crate = path`, `setters_on = Type` (repeatable).
+
+`setters_on = XBuilder` (or `<'a, C: Tr> XBuilder<'a, C>`, parsed as `syn::Generics` then `syn::Type`; the
+path resolves in the settings' module) writes, beside the trait, `impl XBuilder where Self: Holds<S>` with
+one method per setting: the trait method's name, docs, visibility and argument type, its body
+`<Self as SSetters>::name(self, value)`. An inherent method wins at the call site, so a caller in the
+builder's crate needs no import; an impl on a builder of another crate is E0116, and that crate keeps the
+trait. Refused: no type, a non-type value, an enum, a newtype, a `#[map(transparent)]` struct, a settings
+type with generic parameters.
 
 Contracts:
 

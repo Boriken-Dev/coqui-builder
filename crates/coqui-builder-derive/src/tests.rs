@@ -508,3 +508,68 @@ fn an_input_setter_takes_a_primitive_scalar_as_itself() {
         );
     }
 }
+
+#[test]
+fn setters_on_writes_an_inherent_impl_per_builder() {
+    let text = squeezed(
+        &expand_text(
+            "#[builder(setters_on = XBuilder)] #[builder(setters_on = <'a, C: Tr> YBuilder<'a, C>)] struct S { port: u16, name: String }",
+        )
+        .expect("expands")
+        .to_string(),
+    );
+    assert!(
+        text.contains("implXBuilderwhereSelf:::coqui_builder::builder::Holds<S>{"),
+        "{text}"
+    );
+    assert!(
+        text.contains("impl<'a,C:Tr>YBuilder<'a,C>whereSelf:::coqui_builder::builder::Holds<S>{"),
+        "{text}"
+    );
+    assert!(
+        text.contains("fnport(self,value:u16)->Self{<SelfasSSetters>::port(self,value)}"),
+        "{text}"
+    );
+    assert!(
+        text.contains("fnname(self,value:impl::core::convert::Into<String>)->Self{<SelfasSSetters>::name(self,value)}"),
+        "{text}"
+    );
+}
+
+#[test]
+fn setters_on_is_refused_where_it_has_no_meaning() {
+    for (item, stem) in [
+        (
+            "#[builder(setters_on = XBuilder)] struct S<T> { a: T }",
+            "generic parameters",
+        ),
+        (
+            "#[builder(setters_on = XBuilder)] enum E { A, B }",
+            "named fields",
+        ),
+        (
+            "#[builder(setters_on = XBuilder)] struct S(u8);",
+            "named fields",
+        ),
+        (
+            "#[builder(setters_on = XBuilder)] #[map(transparent)] struct S { a: u8 }",
+            "named fields",
+        ),
+        (
+            "#[builder(setters_on = )] struct S { a: u8 }",
+            "takes the type",
+        ),
+        (
+            "#[builder(setters_on = \"XBuilder\")] struct S { a: u8 }",
+            "takes the type",
+        ),
+        (
+            "#[builder(setters_on = <T>)] struct S { a: u8 }",
+            "takes the type",
+        ),
+        ("#[builder(setters_on)] struct S { a: u8 }", "expected `=`"),
+    ] {
+        let refused = expand_text(item).expect_err(item).to_string();
+        assert!(refused.contains(stem), "{item}: {refused}");
+    }
+}

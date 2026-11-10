@@ -161,7 +161,9 @@ fn render() -> String {
     .expect("valid JSON");
     let mut out = String::new();
     for (index, case) in vectors["cases"].as_array().unwrap().iter().enumerate() {
-        if case["coqui_builder"] != "accept" {
+        if case["coqui_builder"] != "accept"
+            || case.get("compiles_alone") == Some(&Value::Bool(false))
+        {
             continue;
         }
         let name = case["name"].as_str().unwrap();
@@ -1052,7 +1054,7 @@ fn case_34_arm_title_and_description() {
 
 #[rustfmt::skip]
 #[allow(dead_code, unused)]
-mod case_36_a_reserved_setter_name_is_renamed_and_the_key_stays {
+mod case_38_a_reserved_setter_name_is_renamed_and_the_key_stays {
     use super::*;
 
     #[derive(::coqui_builder::Describe)] struct S { #[builder(setter = "fill_level")] fill: bool }
@@ -1066,13 +1068,13 @@ mod case_36_a_reserved_setter_name_is_renamed_and_the_key_stays {
 }
 
 #[test]
-fn case_36_a_reserved_setter_name_is_renamed_and_the_key_stays() {
-    case_36_a_reserved_setter_name_is_renamed_and_the_key_stays::check();
+fn case_38_a_reserved_setter_name_is_renamed_and_the_key_stays() {
+    case_38_a_reserved_setter_name_is_renamed_and_the_key_stays::check();
 }
 
 #[rustfmt::skip]
 #[allow(dead_code, unused)]
-mod case_38_stricter_says_which_way_a_setting_gets_stricter {
+mod case_40_stricter_says_which_way_a_setting_gets_stricter {
     use super::*;
 
     #[derive(::coqui_builder::Describe)] struct S { #[builder(stricter = "lower")] timeout: u32, #[builder(stricter = "higher")] attempts: u32 }
@@ -1087,8 +1089,8 @@ mod case_38_stricter_says_which_way_a_setting_gets_stricter {
 }
 
 #[test]
-fn case_38_stricter_says_which_way_a_setting_gets_stricter() {
-    case_38_stricter_says_which_way_a_setting_gets_stricter::check();
+fn case_40_stricter_says_which_way_a_setting_gets_stricter() {
+    case_40_stricter_says_which_way_a_setting_gets_stricter::check();
 }
 
 // END GENERATED

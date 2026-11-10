@@ -142,6 +142,32 @@ pub(crate) fn write(
     let (impl_params, _, _) = generics.split_for_impl();
     let doc = format!("The typed setters of `{name}`, for any builder that holds its settings.");
 
+    let inherent = ctx.container.setters_on.iter().map(|target| {
+        let (_, _, on_where) = target.generics.split_for_impl();
+        let impl_generics = &target.generics;
+        let ty = &target.ty;
+        let mut predicates = on_where
+            .map(|w| w.predicates.iter().map(|p| quote!(#p)).collect::<Vec<_>>())
+            .unwrap_or_default();
+        predicates.push(quote!(Self: #krate::builder::Holds<#name #ty_g>));
+        let (on_impl, _, _) = impl_generics.split_for_impl();
+        let methods = methods.iter().map(|(method, plan)| {
+            let arg = argument(&plan.ty);
+            let docs = docs(&plan.docs, &plan.key);
+            quote! {
+                #(#docs)*
+                #vis fn #method(self, value: #arg) -> Self {
+                    <Self as #trait_name #ty_g>::#method(self, value)
+                }
+            }
+        });
+        quote! {
+            #[automatically_derived]
+            impl #on_impl #ty where #(#predicates),* {
+                #(#methods)*
+            }
+        }
+    });
     let outside = quote! {
         #[doc = #doc]
         #vis trait #trait_name #impl_params:
@@ -149,6 +175,8 @@ pub(crate) fn write(
         {
             #(#declarations)*
         }
+
+        #(#inherent)*
     };
 
     // The impl's own generics: the struct's, and the builder type `B` that holds the partial.
