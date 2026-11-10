@@ -133,3 +133,7 @@ required-features = ["zeroize", "derive"]
 [[test]]
 name = "serde_partial"
 required-features = ["serde", "derive"]
+
+[[test]]
+name = "settings_shapes"
+required-features = ["derive", "std"]
