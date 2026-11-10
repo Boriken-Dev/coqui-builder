@@ -16,6 +16,8 @@ cargo add coqui-builder --features derive
 | --- | --- | --- |
 | `std` (default) | `PathBuf`, `HashMap` and the `Env` source | the environment as a source |
 | `derive` | `coqui-builder-derive` (`syn`, `quote`) | `#[derive(Describe)]` |
+| `zeroize` | `zeroize` | `Secret<T>`; sensitive datums, source texts for sensitive places and `Env` values are wiped on drop |
+| `serde` | `serde` (and its `serde_core`) | `Deserialize` for `Partial<T>`: any serde format fills a `Partial` |
 
 ## 30-second tour
 

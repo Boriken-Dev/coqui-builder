@@ -9,6 +9,8 @@ source at <https://github.com/Boriken-Dev/coqui-builder>.
 | --- | --- | --- |
 | `std` | `PathBuf` and `HashMap` as settings, and `Env` | yes |
 | `derive` | `#[derive(Describe)]`, `#[derive(Leaf)]`, `#[derive(Builder)]` and `#[derive(Configured)]` (`coqui-builder-derive`: `syn`, `quote`, `proc-macro2`) | no |
+| `zeroize` | `Secret<T>`; a sensitive `Datum`, the text a source hands over for a sensitive place and the values of an `Env` are wiped on drop (`zeroize`) | no |
+| `serde` | `Deserialize` for `Partial<T>` (`serde`, with its dependency-free `serde_core`) | no |
 
 MSRV 1.89, edition 2024. `#![no_std]` with `alloc`. A default build has no dependencies.
 The crate holds no `unsafe` (`#![forbid(unsafe_code)]`), no `static`, no logger, and never
@@ -18,10 +20,10 @@ environment once.
 The root re-exports the common task: `Describe` and `Leaf` (traits, and the derives with
 `derive`), `Description`, `Fields`, `Datum`, `Shown`, `KeyPath`, `Segment`, `PathError`,
 `Fill`, `FillError`, `Partial`, `Missing`, `Source`, `SourceError`, `Unknown`, `Entries`,
-`Env` (`std`), `Inspect`, `Report`, `Finding`, `Reason`, `Check`, `Checks`, `Profile`,
+`Env` (`std`), `Secret` (`zeroize`), `Inspect`, `Report`, `Finding`, `Reason`, `Check`, `Checks`, `Profile`,
 `Expect`, `BindError`, `NonDefault`, `non_defaults`, `differences`, `Configured` (and, with
 `derive`, `Builder`). The modules `describe`, `fill`, `path`, `datum`, `partial`, `source`,
-`env`, `inspect`, `report`, `check`, `profile`, `non_default` and `builder` are public; the
+`env`, `inspect`, `report`, `check`, `profile`, `non_default`, `builder` and (`zeroize`) `secret` are public; the
 others' items are reached there (`builder::Holds`, `builder::BuildError`).
 
 ## The idea
@@ -304,6 +306,58 @@ past the end of a list refuses the fill. A variable whose leaf was read is never
 unknown, whatever its spelling. `Env::name(&KeyPath)` gives the variable of a leaf. A list
 whose positions are not all given (`0` and `2` but no `1`) is refused. `Debug` shows the
 prefix and the count, never a value.
+
+## Secrets (`coqui_builder::secret`, feature `zeroize`)
+
+```rust
+pub struct Secret<T: Zeroize>;   // Clone, PartialEq, Eq where T is; Debug is `Secret(***)`; no Display
+impl<T: Zeroize> Secret<T> { pub fn new(T) -> Self; pub fn expose(&self) -> &T; }   // From<T>
+pub struct SecretCodec<T>;       // the Codec a Secret<T> is filled through (`SENSITIVE = true`)
+```
+
+For `T: Leaf + Zeroize` a `Secret<T>` is a setting of its own (it implements `Describe` and
+`Inspect` by hand, so it is not a `Leaf`): one text, the type of `T`, sensitive in the
+description, and every datum read from it is marked sensitive (`String(***)`). `Codec` has a
+`SENSITIVE` constant for the same effect on a hand-written `LeafSlot<T, C>` with
+`Description::leaf_of`; a field converted by `#[map(with = ..)]` needs `#[schema(sensitive)]`. `Secret` exists only with the
+feature, so a `Secret` field does not compile without it; `#[schema(sensitive)]` needs no
+dependency and masks only.
+
+**What is wiped**, with `zeroize`, when the owner drops: a `Secret`'s value; the text of a
+sensitive `Datum`; the text a `Source` handed over for a place the description marks
+sensitive (or below one), as soon as `fill_from` has parsed it; the values an `Env` holds; the
+texts of a `Partial` read through serde. **What is not**: a plain `String` under
+`#[schema(sensitive)]` (hold a `Secret<String>`), the text a caller passes to `Partial::set`,
+a copy taken with `Datum::text` or `Secret::expose`, the copies of a value's text that
+`non_defaults`, `differences`, a `Profile` and its `Expect` texts make while comparing, a
+default kept as text in a description, the process environment itself, the
+buffers a file format's parser keeps, and a buffer a growing `String` left behind when it
+reallocated. Without the feature everything is masked, nothing is wiped. `PartialEq` is not
+constant-time.
+
+## From serde (feature `serde`)
+
+`impl<'de, T: Describe> Deserialize<'de> for Partial<T>`: the input is collected into a
+private tree, and a source over it runs `Partial::fill_from`, so lists (replaced whole),
+untagged enums, a tag written after its arm's keys, `none` texts and unknown keys follow
+"Sources" exactly as they do for `Env`. Keys are matched exactly, with no case folding, and an
+empty string is a value (unlike an empty variable).
+
+- A scalar is its text: a string as it is, a boolean `true`/`false`, an integer its decimal
+  digits, a float the shortest text that reads back (`0.25`; `30.0` is `30`). A format that
+  hands a wider integer than 64 bits as a float loses digits first: write it as a string. A
+  unit or `None` (a JSON `null`) is a key that is not given.
+- Shapes are checked before the fill: a group, variant or open map takes a table (`expected a
+  table at waiting`), a list takes a list or a table of positions (`expected a list at ports`),
+  an untagged enum takes a value or a table, and a leaf takes a value (`expected a single value
+  at waiting.total`; `at the root` for the root). The root follows the same rules. A TOML
+  datetime is not a scalar here: write a date as a string.
+- Unknown keys are skipped, or refused under `deny_unknown_fields` (the error lists them).
+- Every error this impl writes is `Error::custom` with the `FillError` text or a sentence like
+  the above, and never quotes the input, a sensitive value included. A format's own syntax
+  error is the format's, and may show the line it failed on.
+- A builder takes the result: `Builder::from(toml::from_str::<Partial<S>>(text)?)` or
+  `.fill(partial)`.
 
 ## Reading a value (`coqui_builder::inspect`)
 

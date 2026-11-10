@@ -28,7 +28,7 @@ whether a value meets what is expected, with every secret hidden. See the
   Values are compared as typed values, so `30s` equals `30000ms`.
 - **Profiles** — expect an exact value, a range, a set, a stricter-or-looser order, an
   optional group present or absent, or an arm of a variant; check a value and read why not.
-- **No dependencies** — `no_std` with `alloc`; the derive is a feature.
+- **No dependencies** — `no_std` with `alloc`; the derive, `zeroize` and `serde` are features.
 
 ## Installation
 
@@ -40,6 +40,8 @@ cargo add coqui-builder --features derive
 | --- | --- | --- |
 | `std` (default) | `PathBuf`, `HashMap` and the `Env` source | the environment as a source |
 | `derive` | `coqui-builder-derive` (`syn`, `quote`) | `#[derive(Describe)]` |
+| `zeroize` | `zeroize` | `Secret<T>`; sensitive datums, source texts for sensitive places and `Env` values are wiped on drop |
+| `serde` | `serde` (and its `serde_core`) | `Deserialize` for `Partial<T>`: any serde format fills a `Partial` |
 
 ## Quick start
 

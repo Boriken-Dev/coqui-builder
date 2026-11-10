@@ -68,6 +68,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `Configured`, the link between a builder, what it built and a profile: the settings through
   `Inspect`, `non_defaults`, `Check<Builder> for Profile` and `Profile::judge`; written by
   `#[derive(Builder)]` and, on a built type with one `#[configured]` field, `#[derive(Configured)]`.
+- `Secret<T>` (feature `zeroize`): a setting that is sensitive in its description and zeroized
+  when it drops. With the feature, a sensitive `Datum`, the text a source hands over for a
+  sensitive place and the values of an `Env` are wiped on drop as well; `Codec::SENSITIVE`
+  marks a codec's place and its data.
+- `Deserialize` for `Partial<T>` (feature `serde`): TOML, JSON or any serde format fills a
+  `Partial` with the rules of every other source, and a builder takes it with `From` or `fill`.
+  The errors it writes never quote the input.
 - `#[derive(Describe)]` and `#[derive(Leaf)]` (feature `derive`) with the attributes of
   guatiao's derives (`rename`, `rename_all`, `skip`, `default`, `flatten`, `transparent`,
   `deny_unknown_fields`, `tag`, `untagged`, `other`, `as_text`, `with`, `#[schema(..)]`), plus
