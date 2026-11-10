@@ -51,3 +51,59 @@ derive = ["dep:coqui-builder-derive"]
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[[test]]
+name = "shapes"
+required-features = ["derive"]
+
+[[test]]
+name = "derive_leaf"
+required-features = ["derive"]
+
+[[test]]
+name = "option_none"
+required-features = ["derive"]
+
+[[test]]
+name = "meaning"
+required-features = ["derive"]
+
+[[test]]
+name = "differences_vectors"
+required-features = ["derive"]
+
+[[test]]
+name = "credential"
+required-features = ["derive"]
+
+[[test]]
+name = "profile"
+required-features = ["derive"]
+
+[[test]]
+name = "partial"
+required-features = ["derive"]
+
+[[test]]
+name = "source"
+required-features = ["derive"]
+
+[[test]]
+name = "env"
+required-features = ["derive", "std"]
+
+[[test]]
+name = "inspect"
+required-features = ["derive"]
+
+[[test]]
+name = "report"
+required-features = ["derive"]
+
+[[test]]
+name = "non_defaults"
+required-features = ["derive"]
+
+[[test]]
+name = "describable"
+required-features = ["derive"]

@@ -146,3 +146,39 @@ fn a_later_none_replaces_an_earlier_value_in_an_overlay() {
     base.overlay(Partial::from(Timeouts { read_timeout: None }));
     assert_eq!(base.build().unwrap().read_timeout, None);
 }
+
+#[test]
+fn the_text_of_none_is_a_value_a_profile_and_a_comparison_understand() {
+    use coqui_builder::{Check, Expect, Profile, differences};
+    let never = Timeouts { read_timeout: None };
+    let thirty = Timeouts {
+        read_timeout: Some(Duration::from_secs(30)),
+    };
+    assert!(Profile::against(&never).verify(&never).is_met());
+    assert!(!Profile::against(&never).verify(&thirty).is_met());
+    assert!(differences(&Timeouts::description(), &never, Some(&never)).is_empty());
+    assert_eq!(
+        differences(&Timeouts::description(), &never, Some(&thirty)).len(),
+        1
+    );
+    let equal = Profile::new()
+        .expecting("read_timeout", Expect::Equal("never".into()))
+        .unwrap();
+    equal.bind::<Timeouts>().unwrap();
+    assert!(equal.verify(&never).is_met());
+    let one_of = Profile::new()
+        .expecting(
+            "read_timeout",
+            Expect::OneOf(vec!["never".into(), "30s".into()]),
+        )
+        .unwrap();
+    one_of.bind::<Timeouts>().unwrap();
+    assert!(one_of.verify(&thirty).is_met() && one_of.verify(&never).is_met());
+    assert!(
+        Profile::new()
+            .expecting("read_timeout", Expect::Equal("sometimes".into()))
+            .unwrap()
+            .bind::<Timeouts>()
+            .is_err()
+    );
+}

@@ -25,6 +25,7 @@ extern crate std;
 // The derive's output names this crate by `::coqui_builder`, which must resolve inside it too.
 extern crate self as coqui_builder;
 
+pub mod check;
 pub mod datum;
 pub mod describe;
 #[cfg(feature = "std")]
@@ -32,18 +33,28 @@ pub mod describe;
 pub mod env;
 pub mod fill;
 pub mod inspect;
+pub mod non_default;
 pub mod partial;
 pub mod path;
+pub mod profile;
+pub mod report;
 pub mod source;
 
+pub use check::{Check, Checks};
+#[cfg(feature = "derive")]
+#[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
+pub use coqui_builder_derive::{Describe, Leaf};
 pub use datum::{Datum, Shown};
 pub use describe::{Describe, Description, Leaf};
 #[cfg(feature = "std")]
 pub use env::Env;
 pub use fill::{Fill, FillError};
 pub use inspect::{Entries, Inspect};
+pub use non_default::{NonDefault, differences, non_defaults};
 pub use partial::{Missing, Partial};
 pub use path::{KeyPath, PathError, Segment};
+pub use profile::{BindError, Expect, Profile};
+pub use report::{Finding, Reason, Report};
 pub use source::{Source, SourceError, Unknown};
 
 /// What generated code names; not part of the API.
