@@ -55,7 +55,7 @@
       "item": "{derive} struct S { #[map(default)] n: u32, #[map(default = 5)] m: u32, #[schema(default = 7)] k: u32 }",
       "guatiao": "accept",
       "coqui_builder": "accept",
-      "expect": {"kind": "group", "keys": ["n", "m", "k"], "required": [], "defaults": {"n": 0, "m": 5, "k": 7}},
+      "expect": {"kind": "group", "keys": ["n", "m", "k"], "required": ["k"], "defaults": {"n": 0, "m": 5, "k": 7}},
       "coqui_expect": {"kind": "group", "keys": ["n", "m", "k"], "required": [], "defaults": {"n": "0", "m": "5", "k": "7"}}
     },
     {
@@ -159,7 +159,7 @@
       "item": "{derive} enum E { Fast, #[map(other)] Other(String) }",
       "guatiao": "accept",
       "coqui_builder": "accept",
-      "expect": {"kind": "choice", "names": ["Fast"]},
+      "expect": {"kind": "text", "names": ["Fast"]},
       "coqui_expect": {"kind": "leaf", "type": "E", "choices": ["Fast"]}
     },
     {
@@ -202,14 +202,14 @@
     {
       "name": "as_text on a list is per item",
       "item": "{derive} struct S { #[map(default, as_text)] addrs: Vec<std::net::Ipv4Addr> }",
-      "guatiao": "pending",
+      "guatiao": "accept",
       "coqui_builder": "accept",
       "expect": {"kind": "group", "keys": ["addrs"], "required": [], "field_kinds": {"addrs": "list"}}
     },
     {
       "name": "as_text on an optional list is per item",
       "item": "{derive} struct S { #[map(as_text)] addrs: Option<Vec<std::net::Ipv4Addr>> }",
-      "guatiao": "pending",
+      "guatiao": "accept",
       "coqui_builder": "accept",
       "expect": {"kind": "group", "keys": ["addrs"], "required": [], "field_kinds": {"addrs": "list"}}
     },
@@ -217,7 +217,7 @@
       "name": "with names a module that converts the field (a list of protocol names)",
       "item": "mod alpn_list { use coqui_builder::describe::LeafError; pub const TYPE: &str = \"AlpnList\"; pub fn to_text(items: &[String]) -> String { items.join(\",\") } pub fn from_text(text: &str) -> Result<Vec<String>, LeafError> { Ok(text.split(\",\").filter(|s| !s.is_empty()).map(String::from).collect()) } } {derive} struct S { #[map(default, with = alpn_list)] alpn: Vec<String> }",
       "coqui_item": "mod alpn_list { use coqui_builder::describe::LeafError; pub const TYPE: &str = \"AlpnList\"; pub fn to_text(items: &[String]) -> String { items.join(\",\") } pub fn from_text(text: &str) -> Result<Vec<String>, LeafError> { Ok(text.split(\",\").filter(|s| !s.is_empty()).map(String::from).collect()) } } {derive} struct S { #[map(default, with = alpn_list)] alpn: Vec<String> }",
-      "guatiao_item": "mod alpn_list { use guatiao::{Alloc, MapError, Value, ValueError}; use guatiao::schema::KindBuilder; pub fn to_value_in(items: &[String], alloc: Alloc) -> Result<Value, ValueError> { items.to_value_in(alloc) } pub fn from_value(value: &Value) -> Result<Vec<String>, MapError> { Vec::<String>::from_value(value) } pub fn kind(alloc: Alloc) -> KindBuilder { KindBuilder::list_in(alloc, String::kind(alloc)) } } {derive} struct S { #[map(default, with = alpn_list)] alpn: Vec<String> }",
+      "guatiao_item": "mod alpn_list { use guatiao::{Alloc, FromValue, MapError, Schema, ToValue, Value, ValueError}; use guatiao::schema::KindBuilder; pub fn to_value_in(items: &[String], alloc: Alloc) -> Result<Value, ValueError> { items.to_value_in(alloc) } pub fn from_value(value: &Value) -> Result<Vec<String>, MapError> { Vec::<String>::from_value(value) } pub fn kind(alloc: Alloc) -> KindBuilder { KindBuilder::list_in(alloc, String::kind(alloc)) } } {derive} struct S { #[map(default, with = alpn_list)] alpn: Vec<String> }",
       "guatiao": "accept",
       "coqui_builder": "accept",
       "expect": {"kind": "group", "keys": ["alpn"], "required": [], "field_kinds": {"alpn": "list"}},
@@ -227,7 +227,7 @@
       "name": "with names a module that converts bytes held as text (a protocol name)",
       "item": "mod alpn_text { use coqui_builder::describe::LeafError; pub const TYPE: &str = \"Alpn\"; pub fn to_text(alpn: &[u8]) -> String { String::from_utf8_lossy(alpn).into_owned() } pub fn from_text(text: &str) -> Result<Vec<u8>, LeafError> { Ok(text.as_bytes().to_vec()) } } {derive} struct S { #[map(default, with = alpn_text)] alpn: Vec<u8> }",
       "coqui_item": "mod alpn_text { use coqui_builder::describe::LeafError; pub const TYPE: &str = \"Alpn\"; pub fn to_text(alpn: &[u8]) -> String { String::from_utf8_lossy(alpn).into_owned() } pub fn from_text(text: &str) -> Result<Vec<u8>, LeafError> { Ok(text.as_bytes().to_vec()) } } {derive} struct S { #[map(default, with = alpn_text)] alpn: Vec<u8> }",
-      "guatiao_item": "mod alpn_text { use guatiao::{Alloc, MapError, Value, ValueError}; use guatiao::schema::KindBuilder; pub fn to_value_in(alpn: &[u8], alloc: Alloc) -> Result<Value, ValueError> { String::from_utf8(alpn.to_vec()).map_err(|_| ValueError::Unrepresentable)?.to_value_in(alloc) } pub fn from_value(value: &Value) -> Result<Vec<u8>, MapError> { Ok(String::from_value(value)?.into_bytes()) } pub fn kind(alloc: Alloc) -> KindBuilder { String::kind(alloc) } } {derive} struct S { #[map(default, with = alpn_text)] alpn: Vec<u8> }",
+      "guatiao_item": "mod alpn_text { use guatiao::{Alloc, FromValue, MapError, Schema, ToValue, Value, ValueError}; use guatiao::schema::KindBuilder; pub fn to_value_in(alpn: &[u8], alloc: Alloc) -> Result<Value, ValueError> { String::from_utf8(alpn.to_vec()).map_err(|_| ValueError::Unrepresentable)?.to_value_in(alloc) } pub fn from_value(value: &Value) -> Result<Vec<u8>, MapError> { Ok(String::from_value(value)?.into_bytes()) } pub fn kind(alloc: Alloc) -> KindBuilder { String::kind(alloc) } } {derive} struct S { #[map(default, with = alpn_text)] alpn: Vec<u8> }",
       "guatiao": "accept",
       "coqui_builder": "accept",
       "expect": {"kind": "group", "keys": ["alpn"], "required": [], "field_kinds": {"alpn": "text"}},
@@ -236,7 +236,7 @@
     {
       "name": "an Option with a written None",
       "item": "{derive} struct S { #[map(default = Some(std::time::Duration::from_secs(30)), none = \"never\")] read_timeout: Option<std::time::Duration> }",
-      "guatiao": "pending",
+      "guatiao": "accept",
       "coqui_builder": "accept",
       "expect": {"kind": "group", "keys": ["read_timeout"], "required": [], "defaults": {"read_timeout": [30, 0]}, "none": {"read_timeout": "never"}},
       "coqui_expect": {"kind": "group", "keys": ["read_timeout"], "required": [], "defaults": {"read_timeout": "30s"}, "none": {"read_timeout": "never"}}
@@ -436,19 +436,19 @@
     {
       "name": "none needs a default",
       "item": "{derive} struct S { #[map(none = \"never\")] a: Option<u8> }",
-      "guatiao": "pending",
+      "guatiao": {"refuse": "`none` needs `default = <expr>`"},
       "coqui_builder": {"refuse": "`none` needs `default = <expr>`"}
     },
     {
       "name": "none is for an Option",
       "item": "{derive} struct S { #[map(default = 1, none = \"never\")] a: u8 }",
-      "guatiao": "pending",
+      "guatiao": {"refuse": "this field is not an `Option`"},
       "coqui_builder": {"refuse": "this field is not an `Option`"}
     },
     {
       "name": "none beside as_text",
       "item": "{derive} struct S { #[map(default = None, none = \"never\", as_text)] a: Option<std::net::Ipv4Addr> }",
-      "guatiao": "pending",
+      "guatiao": {"refuse": "`none` cannot be combined with `with` or `as_text`"},
       "coqui_builder": {"refuse": "`none` cannot be combined with `with` or `as_text`"}
     },
     {
@@ -472,7 +472,7 @@
     {
       "name": "a generic enum",
       "item": "{derive} enum E<T> { A(T) }",
-      "guatiao": "accept",
+      "guatiao": {"refuse": "needs `#[map(tag"},
       "coqui_builder": {"refuse": "supports a generic struct, not a generic enum"}
     },
     {
