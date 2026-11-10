@@ -21,8 +21,25 @@ use crate::report::{Finding, Reason, Report};
 fn leaf_of<'a>(resolved: &Resolved<'a>) -> Option<(&'a LeafInfo, bool)> {
     match resolved.description().kind() {
         Kind::Leaf(info) => Some((info, false)),
+        Kind::Union(union) => Some((union.text(), false)),
         Kind::List(item) => match item.kind() {
             Kind::Leaf(info) => Some((info, true)),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// The leaf of the items of a list at `resolved`, also where the list is the structured arm
+/// of an untagged enum.
+fn list_leaf<'a>(resolved: &Resolved<'a>) -> Option<&'a LeafInfo> {
+    let description = match resolved.description().kind() {
+        Kind::Union(union) => union.structured(),
+        _ => resolved.description(),
+    };
+    match description.kind() {
+        Kind::List(item) => match item.kind() {
+            Kind::Leaf(info) => Some(info),
             _ => None,
         },
         _ => None,
@@ -91,8 +108,8 @@ pub(super) fn validate(expect: &Expect, resolved: &Resolved<'_>) -> Result<(), R
             }
             _ => Err(custom("strictness applies to a leaf".into())),
         },
-        Expect::SubsetOf(items) | Expect::ItemsEqual(items) => match leaf_of(resolved) {
-            Some((info, true)) => texts(
+        Expect::SubsetOf(items) | Expect::ItemsEqual(items) => match list_leaf(resolved) {
+            Some(info) => texts(
                 info,
                 &items.iter().map(String::as_str).collect::<Vec<_>>(),
                 false,
@@ -161,6 +178,7 @@ pub(super) fn run(
     subject: &dyn Inspect,
     report: &mut Report,
 ) {
+    let mut switched: Vec<KeyPath> = Vec::new();
     for (key, expect) in profile.entries() {
         if matches!(expect, Expect::Any) {
             continue;
@@ -169,6 +187,24 @@ pub(super) fn run(
             report.push(unmet(key, Shown::Unset, expect, Reason::UnknownKey));
             continue;
         };
+        if let Some((union, own_finding)) = switched_union(profile, &resolved, subject) {
+            if own_finding && !matches!(expect, Expect::Absent) && !switched.contains(&union) {
+                let datum = subject.at(union.segments());
+                let reason = if datum.is_some() {
+                    Reason::Differs
+                } else {
+                    Reason::Missing
+                };
+                report.push(unmet(
+                    &union,
+                    datum.map_or(Shown::Unset, Shown::One),
+                    &Expect::Required,
+                    reason,
+                ));
+                switched.push(union);
+            }
+            continue;
+        }
         if gated_out(profile, description, &resolved, subject) {
             continue;
         }
@@ -178,6 +214,25 @@ pub(super) fn run(
         }
         evaluate(key, expect, &resolved, subject, report);
     }
+}
+
+/// The untagged enum above `resolved` that the subject holds on its text side while the
+/// profile expects keys of its structured arm: it is one finding at the enum, not one per key.
+/// A text expectation on the enum speaks for those keys instead, and answers nothing here.
+fn switched_union(
+    profile: &Profile,
+    resolved: &Resolved<'_>,
+    subject: &dyn Inspect,
+) -> Option<(KeyPath, bool)> {
+    let gate = resolved.gates().iter().find(|g| g.is_union())?;
+    if subject.entries(gate.at().segments()).is_some() {
+        return None;
+    }
+    let text = matches!(
+        profile.get(gate.at()),
+        Some(Expect::Equal(_) | Expect::OneOf(_))
+    );
+    Some((gate.at().clone(), !text))
 }
 
 fn present(subject: &dyn Inspect, at: &[Segment]) -> bool {
@@ -193,6 +248,9 @@ fn gated_out(
     subject: &dyn Inspect,
 ) -> bool {
     for gate in resolved.gates() {
+        if gate.is_union() {
+            continue;
+        }
         match gate.arms() {
             None => match profile.get(gate.at()) {
                 Some(Expect::Required) if subject.entries(gate.at().segments()).is_none() => {
@@ -288,7 +346,13 @@ fn evaluate(
         report.push(judged(key, shown, expect, outcome));
         return;
     }
-    let Some((info, is_list)) = leaf_of(resolved) else {
+    let list_expect = matches!(expect, Expect::ItemsEqual(_) | Expect::SubsetOf(_));
+    let found = if list_expect {
+        list_leaf(resolved).map(|info| (info, true))
+    } else {
+        leaf_of(resolved)
+    };
+    let Some((info, is_list)) = found else {
         return;
     };
     if is_list {
@@ -296,6 +360,10 @@ fn evaluate(
         return;
     }
     let datum = subject.at(key.segments());
+    // A subject on the structured arm of an untagged enum holds a value, just not a text.
+    let structured = datum.is_none()
+        && matches!(description.kind(), Kind::Union(_))
+        && subject.entries(key.segments()).is_some();
     let value = datum.as_ref().map(|d| d.text().to_owned());
     let shown = datum.map_or(Shown::Unset, Shown::One);
     let none = resolved.field().and_then(|f| f.none.as_deref());
@@ -309,11 +377,13 @@ fn evaluate(
         Expect::Equal(x) => match &value {
             Some(v) if eq(v, x) => Ok(()),
             Some(_) => Err(Reason::Differs),
+            None if structured => Err(Reason::Differs),
             None => Err(Reason::Missing),
         },
         Expect::OneOf(allowed) => match &value {
             Some(v) if allowed.iter().any(|a| eq(v, a)) => Ok(()),
             Some(_) => Err(Reason::NotOneOf),
+            None if structured => Err(Reason::NotOneOf),
             None => Err(Reason::Missing),
         },
         Expect::Within { min, max } => match &value {

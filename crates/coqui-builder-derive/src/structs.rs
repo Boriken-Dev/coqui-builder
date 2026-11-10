@@ -176,6 +176,8 @@ fn wrap(
         impl #impl_g __cb::Describe for #name #ty_g #where_g {
             type Fill = __cb::fill::Wrapped<Self, <#inner as __cb::Describe>::Fill>;
             const OPTIONAL: bool = <#inner as __cb::Describe>::OPTIONAL;
+            const LEAF: bool = <#inner as __cb::Describe>::LEAF;
+            const MIXED: bool = <#inner as __cb::Describe>::MIXED;
             fn description() -> __cb::Description {
                 let mut __d = <#inner as __cb::Describe>::description();
                 #doc

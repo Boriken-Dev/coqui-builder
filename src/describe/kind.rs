@@ -207,8 +207,50 @@ pub enum Kind {
     Group(Group),
     /// A group whose fields depend on a tag naming one of its arms.
     Variant(Variant),
-    /// One of several shapes, told apart by trying each in turn.
-    Union(Vec<Description>),
+    /// An untagged enum: a text side and one structured arm.
+    Union(Union),
+}
+
+/// An untagged enum that holds text arms and one structured arm.
+///
+/// The text arms (unit names and single-value arms) are one leaf; the structured arm is a
+/// group, a list, a map or a tagged variant. A source that answers a value at the union's
+/// place means the text side; a source that answers entries, or any key below, means the
+/// structured arm.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Union {
+    text: LeafInfo,
+    structured: Box<Description>,
+    default_structured: bool,
+}
+
+impl Union {
+    /// A union of the text arms `text` and the structured arm `structured`.
+    pub fn new(text: LeafInfo, structured: Description) -> Union {
+        Union {
+            text,
+            structured: Box::new(structured),
+            default_structured: false,
+        }
+    }
+
+    /// The text arms, as one leaf: its type name is the enum's, its choices the unit names
+    /// when the enum has no other text arm, and it reads a text by trying the unit names and
+    /// then each single-value arm in declaration order.
+    pub fn text(&self) -> &LeafInfo {
+        &self.text
+    }
+
+    /// The structured arm.
+    pub fn structured(&self) -> &Description {
+        &self.structured
+    }
+
+    /// Whether the default is the structured arm (its fields carry the defaults) rather than
+    /// a text.
+    pub fn default_is_structured(&self) -> bool {
+        self.default_structured
+    }
 }
 
 /// A named setting of a [`Group`] or an [`Arm`].
@@ -313,9 +355,32 @@ impl Field {
                 }
             }
             Kind::Leaf(_) => self.default = from.at(path).map(|d| d.text().to_owned()),
+            Kind::Union(_) => {
+                if let Some(datum) = from.at(path) {
+                    self.default = Some(datum.text().to_owned());
+                } else if from.entries(path).is_some() {
+                    self.default_structured_arm(from, path);
+                }
+            }
             _ => {}
         }
         self.required = false;
+    }
+}
+
+impl Field {
+    /// The default is the structured arm of an untagged enum: the arm's own fields take the
+    /// texts `from` holds.
+    fn default_structured_arm(&mut self, from: &dyn Inspect, path: &mut Vec<Segment>) {
+        let Kind::Union(union) = &mut self.description.kind else {
+            return;
+        };
+        union.default_structured = true;
+        let placeholder = Description::new(Kind::Group(Group::new(Vec::new())));
+        let mut arm = Field::new("", core::mem::replace(&mut *union.structured, placeholder));
+        arm.default_at(from, path);
+        *union.structured = arm.description;
+        self.default_items = arm.default_items;
     }
 }
 

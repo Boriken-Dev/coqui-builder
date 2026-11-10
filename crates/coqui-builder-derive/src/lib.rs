@@ -14,7 +14,7 @@
 //! | newtype struct, or `#[map(transparent)]` | the field's own setting |
 //! | enum of unit variants | a choice of names (`Leaf`) |
 //! | enum with `#[map(tag = "k")]` | a group whose fields depend on the arm the tag names |
-//! | enum with `#[map(untagged)]` | a union told apart by the kind of value (`Leaf`) |
+//! | enum with `#[map(untagged)]` | text arms and at most one structured arm |
 //!
 //! A tuple struct of two or more fields, a unit struct, a union, a generic enum and a type that
 //! holds itself are refused with a sentence that says what to do instead. The spellings are
@@ -28,6 +28,7 @@ mod enums;
 mod fields;
 mod rename;
 mod structs;
+mod untagged;
 
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;

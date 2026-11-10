@@ -456,7 +456,7 @@ impl FieldPlan {
 }
 
 /// A type that holds itself has a description with no end.
-fn refuse_self_reference(ty: &Type, owner: &Ident) -> syn::Result<()> {
+pub(crate) fn refuse_self_reference(ty: &Type, owner: &Ident) -> syn::Result<()> {
     /// Whether `ty` names the owner as a bare path, itself or inside a generic argument,
     /// reference, array, slice or tuple; `other::Owner` is another type.
     fn names(ty: &Type, owner: &Ident) -> bool {

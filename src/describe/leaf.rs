@@ -106,6 +106,7 @@ pub trait Leaf: Sized {
 
 impl<T: Leaf> Describe for T {
     type Fill = LeafSlot<T>;
+    const LEAF: bool = true;
 
     fn description() -> Description {
         Description::leaf::<T>()

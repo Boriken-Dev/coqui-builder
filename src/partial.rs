@@ -256,9 +256,18 @@ fn overlay_walk<T: Describe>(
                 }
             }
         }
-        Kind::Leaf(_) | Kind::Union(_) => {
+        Kind::Leaf(_) => {
             if let Some(datum) = later.fill.at(path) {
                 let _ = target.set_at(path, datum.text());
+            }
+        }
+        Kind::Union(union) => {
+            if let Some(datum) = later.fill.at(path) {
+                let _ = target.set_at(path, datum.text());
+            } else if later.fill.entries(path).is_some() {
+                // Choosing the structured arm drops a text, and then its keys are laid over.
+                let _ = target.set_items_at(path, &[]);
+                overlay_walk(target, later, union.structured(), path);
             }
         }
     }
@@ -285,6 +294,21 @@ impl<T: Describe> Partial<T> {
     /// Whether the optional groups and variant arms above `resolved` let the place exist.
     fn reachable(&self, resolved: &crate::describe::Resolved<'_>) -> bool {
         for gate in resolved.gates() {
+            if gate.is_union() {
+                let at = gate.at().segments();
+                if self.fill.entries(at).is_some() {
+                    continue;
+                }
+                let on_default = self.fill.at(at).is_none()
+                    && self.resolve_place(at).is_some_and(|found| {
+                        matches!(found.description().kind(),
+                            Kind::Union(union) if union.default_is_structured())
+                    });
+                if !on_default {
+                    return false;
+                }
+                continue;
+            }
             match gate.arms() {
                 None => {
                     if self.fill.entries(gate.at().segments()).is_none() {
@@ -319,13 +343,21 @@ impl<T: Describe> Inspect for Partial<T> {
             return Some(set);
         }
         let resolved = self.resolve_place(at);
-        if let Some(resolved) = &resolved
-            && let Kind::Leaf(info) = resolved.description().kind()
-        {
-            if !self.reachable(resolved) {
-                return None;
+        if let Some(resolved) = &resolved {
+            let info = match resolved.description().kind() {
+                Kind::Leaf(info) => Some(info),
+                // A union answers its default text only while no structured key is set.
+                Kind::Union(union) if self.fill.entries(at).is_none() => Some(union.text()),
+                _ => None,
+            };
+            if let Some(info) = info {
+                if !self.reachable(resolved) {
+                    return None;
+                }
+                if let Some(text) = resolved.default() {
+                    return Some(Datum::new(info.ty(), text));
+                }
             }
-            return resolved.default().map(|text| Datum::new(info.ty(), text));
         }
         // An item of a list left to its default.
         let (last, parent) = at.split_last()?;
@@ -334,7 +366,11 @@ impl<T: Describe> Inspect for Partial<T> {
         if !self.reachable(&list) || self.fill.entries(parent).is_some() {
             return None;
         }
-        let Kind::List(item) = list.description().kind() else {
+        let list_kind = match list.description().kind() {
+            Kind::Union(union) => union.structured().kind(),
+            other => other,
+        };
+        let Kind::List(item) = list_kind else {
             return None;
         };
         let Kind::Leaf(info) = item.kind() else {
@@ -352,6 +388,13 @@ impl<T: Describe> Inspect for Partial<T> {
         let resolved = self.resolve_place(at)?;
         if !self.reachable(&resolved) {
             return None;
+        }
+        if let Kind::Union(union) = resolved.description().kind()
+            && union.default_is_structured()
+            && self.fill.at(at).is_none()
+            && resolved.default_items().is_none()
+        {
+            return Some(Entries::Keys(Vec::new()));
         }
         resolved
             .default_items()

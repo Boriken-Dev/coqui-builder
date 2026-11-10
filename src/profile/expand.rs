@@ -22,7 +22,7 @@ impl Inspect for Defaults<'_> {
     fn at(&self, at: &[Segment]) -> Option<Datum> {
         if let Some((Segment::Index(index), parent)) = at.split_last() {
             let list = self.0.resolve(parent)?;
-            let Kind::List(item) = list.description().kind() else {
+            let Kind::List(item) = structured(list.description()).kind() else {
                 return None;
             };
             let Kind::Leaf(info) = item.kind() else {
@@ -32,8 +32,10 @@ impl Inspect for Defaults<'_> {
             return Some(Datum::new(info.ty(), text.as_str()));
         }
         let resolved = self.0.resolve(at)?;
-        let Kind::Leaf(info) = resolved.description().kind() else {
-            return None;
+        let info = match resolved.description().kind() {
+            Kind::Leaf(info) => info,
+            Kind::Union(union) => union.text(),
+            _ => return None,
         };
         resolved.default().map(|text| Datum::new(info.ty(), text))
     }
@@ -50,8 +52,23 @@ impl Inspect for Defaults<'_> {
                 let optional = resolved.field().is_some_and(|f| f.optional);
                 (!optional).then(|| Entries::Keys(Vec::new()))
             }
+            Kind::Union(union) if union.default_is_structured() && resolved.default().is_none() => {
+                match resolved.default_items() {
+                    Some(items) => Some(Entries::Len(items.len())),
+                    None => Some(Entries::Keys(Vec::new())),
+                }
+            }
+            Kind::Union(_) => None,
             _ => None,
         }
+    }
+}
+
+/// The description of an untagged enum's structured arm; any other is itself.
+fn structured(description: &Description) -> &Description {
+    match description.kind() {
+        Kind::Union(union) => union.structured(),
+        _ => description,
     }
 }
 
@@ -173,6 +190,13 @@ fn place(
             };
             put(out, path, expect);
         }
-        Kind::Union(_) => {}
+        Kind::Union(union) => match source.at(path) {
+            Some(_) if secret => put(out, path, Expect::Required),
+            Some(datum) => put(out, path, Expect::Equal(String::from(datum.text()))),
+            None if source.entries(path).is_some() => {
+                place(union.structured(), false, secret, source, path, out);
+            }
+            None => put(out, path, Expect::Absent),
+        },
     }
 }

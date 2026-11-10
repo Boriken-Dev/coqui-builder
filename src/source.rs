@@ -52,13 +52,19 @@ impl core::error::Error for SourceError {}
 pub trait Source {
     /// The text at `at`, which is a leaf of type `leaf`; `None` when the source holds none.
     ///
+    /// At an untagged enum that has a structured arm this is the text side: `leaf` is the
+    /// enum's text arms, and a source holding a table there answers [`entries`](Source::entries)
+    /// and may refuse this, which is not a failure.
+    ///
     /// # Errors
     ///
     /// [`SourceError`] when the source cannot answer, or holds structure here.
     fn value(&mut self, at: &KeyPath, leaf: &LeafInfo) -> Result<Option<String>, SourceError>;
 
     /// How many items the list at `at` has, or which keys the open map at `at` has; `None`
-    /// when the source holds none.
+    /// when the source holds none. At an untagged enum that has a structured arm, any answer
+    /// means the source holds the structured arm there (an empty table included), and giving
+    /// a value as well is an error; a source answers `None` where it holds a scalar.
     ///
     /// # Errors
     ///
@@ -155,6 +161,9 @@ fn positions(entries: Entries) -> Result<Option<usize>, SourceError> {
 fn refuses(description: &Description, at: &[Segment]) -> bool {
     let mut current = description;
     for segment in at {
+        if let Kind::Union(union) = current.kind() {
+            current = union.structured();
+        }
         let name = segment.name();
         match current.kind() {
             Kind::Group(group) => match group.field(&name) {
@@ -267,7 +276,32 @@ fn fill_place<T: Describe>(
                 partial.set_at(path.segments(), &text)?;
             }
         }
-        Kind::Union(_) => {}
+        Kind::Union(union) => {
+            // A source holding a table here answers `entries`; its refusal to read a value
+            // from a table is the same answer, not a failure.
+            let table = source.entries(path)?.is_some();
+            let text = match source.value(path, union.text()) {
+                Ok(text) => text,
+                Err(_) if table => None,
+                Err(error) => return Err(error.into()),
+            };
+            match (text, table) {
+                (Some(_), true) => {
+                    return Err(SourceError::new(format!(
+                        "{path} is given both as a value and as keys below it"
+                    ))
+                    .into());
+                }
+                (Some(text), false) => partial.set_at(path.segments(), &text)?,
+                (None, table) => {
+                    if table {
+                        // An empty table still chooses the structured arm.
+                        partial.set_items_at(path.segments(), &[])?;
+                    }
+                    fill_place(partial, source, union.structured(), path)?;
+                }
+            }
+        }
     }
     Ok(())
 }

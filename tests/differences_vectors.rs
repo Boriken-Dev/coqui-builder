@@ -283,6 +283,9 @@ fn run<T: Describe + Inspect>(case: &Value) -> Vec<Value> {
                 Shown::Items(_) => {
                     out.insert("value".into(), json!("items"));
                 }
+                Shown::Fields(_) => {
+                    out.insert("value".into(), json!("fields"));
+                }
             }
             match finding.expected() {
                 Expect::Equal(text) => {

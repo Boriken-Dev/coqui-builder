@@ -13,6 +13,7 @@ use syn::{DataEnum, Fields, Ident, Type};
 use crate::attrs::{ContainerAttrs, VariantAttrs};
 use crate::fields::FieldPlan;
 use crate::structs::Ctx;
+use crate::untagged::{Held, Named, expand as untagged_union};
 
 pub(crate) fn expand(
     ctx: &Ctx<'_>,
@@ -240,11 +241,7 @@ fn untagged(
     data: &DataEnum,
     doc: Option<&String>,
 ) -> syn::Result<TokenStream> {
-    struct Held {
-        ident: Ident,
-        ty: Type,
-    }
-    let mut names: Vec<(Ident, String, Option<String>)> = Vec::new();
+    let mut names: Vec<Named> = Vec::new();
     let mut held: Vec<Held> = Vec::new();
     for variant in &data.variants {
         if says_other(variant) {
@@ -273,6 +270,7 @@ fn untagged(
                          holding a value stores no name.",
                     ));
                 }
+                crate::fields::refuse_self_reference(&u.unnamed[0].ty, name)?;
                 held.push(Held {
                     ident: variant.ident.clone(),
                     ty: u.unnamed[0].ty.clone(),
@@ -298,24 +296,21 @@ fn untagged(
     let pairs: Vec<(String, &Ident)> = names.iter().map(|(i, n, _)| (n.clone(), i)).collect();
     reject_duplicates(&pairs)?;
 
+    if !held.is_empty() {
+        let labelled: Vec<(&String, &String)> = names
+            .iter()
+            .filter_map(|(_, n, l)| l.as_ref().map(|l| (n, l)))
+            .collect();
+        let _ = (container, doc);
+        return Ok(untagged_union(name, &names, &held, &labels_fn(&labelled)));
+    }
+
     let to_names = names
         .iter()
         .map(|(i, n, _)| quote!(Self::#i => __cb::__private::String::from(#n),));
-    let to_held = held.iter().map(|h| {
-        let i = &h.ident;
-        quote!(Self::#i(__v) => __cb::Leaf::to_text(__v),)
-    });
     let name_matches = names
         .iter()
         .map(|(i, n, _)| quote!(#n => return ::core::result::Result::Ok(Self::#i),));
-    let text_held = held.iter().map(|h| {
-        let (i, ty) = (&h.ident, &h.ty);
-        quote! {
-            if let ::core::result::Result::Ok(__v) = <#ty as __cb::Leaf>::from_text(__text) {
-                return ::core::result::Result::Ok(Self::#i(__v));
-            }
-        }
-    });
     let text_names = if names.is_empty() {
         quote!()
     } else {
@@ -337,13 +332,11 @@ fn untagged(
             fn to_text(&self) -> __cb::__private::String {
                 match self {
                     #(#to_names)*
-                    #(#to_held)*
                 }
             }
 
             fn from_text(__text: &str) -> ::core::result::Result<Self, __cb::describe::LeafError> {
                 #text_names
-                #(#text_held)*
                 ::core::result::Result::Err(__cb::describe::LeafError::Invalid {
                     type_name: stringify!(#name),
                 })

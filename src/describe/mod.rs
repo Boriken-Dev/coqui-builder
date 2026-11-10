@@ -17,7 +17,7 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-pub use kind::{Arm, Field, Group, Kind, LeafInfo, Notes, Stricter, Variant};
+pub use kind::{Arm, Field, Group, Kind, LeafInfo, Notes, Stricter, Union, Variant};
 pub use leaf::{Codec, Leaf, LeafError, Native, assert_round_trip};
 
 use crate::fill::Fill;
@@ -34,6 +34,15 @@ pub trait Describe: Sized {
     /// The type is `Option<_>`: leaving a field of it out is a value of its own, so it is
     /// never required.
     const OPTIONAL: bool = false;
+
+    /// The type is one text: a [`Leaf`], or an untagged enum whose arms all are. An untagged
+    /// enum counts the arms that are not, and holds at most one.
+    const LEAF: bool = false;
+
+    /// The type is an untagged enum with a structured arm of its own, which another untagged
+    /// enum cannot hold.
+    #[doc(hidden)]
+    const MIXED: bool = false;
 
     /// What this type is.
     fn description() -> Description;
@@ -85,9 +94,9 @@ impl Description {
         Description::new(Kind::Variant(variant))
     }
 
-    /// One of `arms`, told apart by trying each in turn.
-    pub fn union(arms: Vec<Description>) -> Description {
-        Description::new(Kind::Union(arms))
+    /// An untagged enum of the text arms `text` and the structured arm `structured`.
+    pub fn union(text: LeafInfo, structured: Description) -> Description {
+        Description::new(Kind::Union(Union::new(text, structured)))
     }
 
     /// The kind.
@@ -147,6 +156,14 @@ impl Description {
         let mut default_items: Option<Vec<String>> = None;
         let mut gates: Vec<Gate> = Vec::new();
         for (depth, segment) in at.iter().enumerate() {
+            if let Kind::Union(union) = &current.kind {
+                gates.push(Gate {
+                    at: KeyPath::new(at[..depth].to_vec()),
+                    arms: None,
+                    union: true,
+                });
+                current = union.structured();
+            }
             let name = segment.name();
             match &current.kind {
                 Kind::Group(group) => {
@@ -155,6 +172,7 @@ impl Description {
                         gates.push(Gate {
                             at: KeyPath::new(at[..=depth].to_vec()),
                             arms: None,
+                            union: false,
                         });
                     }
                     field = Some(found);
@@ -188,11 +206,13 @@ impl Description {
                     gates.push(Gate {
                         at: KeyPath::new(at[..depth].to_vec()),
                         arms: Some(arms),
+                        union: false,
                     });
                     if found.optional && matches!(found.description.kind, Kind::Group(_)) {
                         gates.push(Gate {
                             at: KeyPath::new(at[..=depth].to_vec()),
                             arms: None,
+                            union: false,
                         });
                     }
                     field = Some(found);
@@ -323,6 +343,7 @@ fn collect_sensitive(
             collect_sensitive(item, prefix, out);
             prefix.pop();
         }
+        Kind::Union(union) => collect_sensitive(union.structured(), prefix, out),
         _ => {}
     }
 }
@@ -355,24 +376,31 @@ impl core::fmt::Display for Bound {
     }
 }
 
-/// A place a profile's expectation can depend on: an optional group's presence, or the arm of a
-/// variant.
+/// A place a profile's expectation can depend on: an optional group's presence, the arm of a
+/// variant, or the structured arm of an untagged enum.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Gate {
     at: KeyPath,
     arms: Option<Vec<String>>,
+    union: bool,
 }
 
 impl Gate {
-    /// The path of the optional group or variant.
+    /// The path of the optional group, variant or untagged enum.
     pub fn at(&self) -> &KeyPath {
         &self.at
     }
 
     /// For a variant, the arms that declare the key reached through it; `None` for an optional
-    /// group.
+    /// group or an untagged enum.
     pub fn arms(&self) -> Option<&[String]> {
         self.arms.as_deref()
+    }
+
+    /// Whether the key is reached through the structured arm of an untagged enum, which holds
+    /// only while the enum is on that arm.
+    pub fn is_union(&self) -> bool {
+        self.union
     }
 }
 

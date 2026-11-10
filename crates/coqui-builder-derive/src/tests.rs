@@ -232,3 +232,35 @@ fn a_field_naming_the_owner_is_refused_unless_it_is_skipped_or_another_type() {
         assert!(expand_text(ok).is_ok(), "{ok}");
     }
 }
+
+/// The text of `tokens` with the whitespace and line continuations of its literals dropped.
+fn squeezed(tokens: &str) -> String {
+    tokens
+        .chars()
+        .filter(|c| !c.is_whitespace() && *c != '\\')
+        .collect()
+}
+
+#[test]
+fn an_untagged_enum_with_a_held_arm_asserts_its_structured_arm_count() {
+    let held = expand_text("#[map(untagged)] enum E { Off, A(A), B(B) }")
+        .expect("accepted: the count is checked when the enum compiles")
+        .to_string();
+    let message = "an untagged enum holds at most one arm that is not a single value; \
+                   tell the others apart with a tag";
+    assert!(squeezed(&held).contains(&squeezed(message)), "{held}");
+    assert!(held.contains("MIXED"), "{held}");
+    // Names alone stay a plain leaf, with no union machinery.
+    let names = expand_text("#[map(untagged)] enum E { Off, On }")
+        .expect("accepted")
+        .to_string();
+    assert!(!names.contains("__Fill"), "{names}");
+}
+
+#[test]
+fn an_untagged_arm_that_holds_the_enum_is_refused() {
+    let refused = expand_text("#[map(untagged)] enum Tree { Leaf(u8), Kids(Vec<Tree>) }")
+        .expect_err("a description with no end")
+        .to_string();
+    assert!(refused.contains("holds itself"), "{refused}");
+}

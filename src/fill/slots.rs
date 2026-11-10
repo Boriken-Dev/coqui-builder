@@ -260,6 +260,8 @@ impl<T, F: Fill<T>> Fill<Option<T>> for OptionSlot<T, F> {
 impl<T: Describe> Describe for Option<T> {
     type Fill = OptionSlot<T, T::Fill>;
     const OPTIONAL: bool = true;
+    const LEAF: bool = T::LEAF;
+    const MIXED: bool = T::MIXED;
 
     fn description() -> Description {
         T::description()

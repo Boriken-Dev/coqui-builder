@@ -73,7 +73,8 @@ impl fmt::Debug for Datum {
     }
 }
 
-/// What a finding shows of a place: nothing, one datum, or the items of a list.
+/// What a finding shows of a place: nothing, one datum, the items of a list, or the leaves
+/// of the structured arm of an untagged enum.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Shown {
     /// The place is not set.
@@ -83,6 +84,8 @@ pub enum Shown {
     One(Datum),
     /// A list, item by item.
     Items(Vec<Datum>),
+    /// The structured arm of an untagged enum, leaf by leaf as `(key below the enum, datum)`.
+    Fields(Vec<(String, Datum)>),
 }
 
 impl Shown {
@@ -93,12 +96,18 @@ impl Shown {
             Shown::Unset => Shown::Unset,
             Shown::One(d) => Shown::One(d.sensitive()),
             Shown::Items(items) => Shown::Items(items.into_iter().map(Datum::sensitive).collect()),
+            Shown::Fields(fields) => Shown::Fields(
+                fields
+                    .into_iter()
+                    .map(|(key, datum)| (key, datum.sensitive()))
+                    .collect(),
+            ),
         }
     }
 }
 
 impl fmt::Display for Shown {
-    /// `unset`, `Type(text)`, or `[Type(a), Type(b)]`.
+    /// `unset`, `Type(text)`, `[Type(a), Type(b)]`, or `{key: Type(a), other: Type(b)}`.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Shown::Unset => f.write_str("unset"),
@@ -112,6 +121,17 @@ impl fmt::Display for Shown {
                     item.fmt(f)?;
                 }
                 f.write_str("]")
+            }
+            Shown::Fields(fields) => {
+                f.write_str("{")?;
+                for (at, (key, datum)) in fields.iter().enumerate() {
+                    if at > 0 {
+                        f.write_str(", ")?;
+                    }
+                    write!(f, "{key}: ")?;
+                    datum.fmt(f)?;
+                }
+                f.write_str("}")
             }
         }
     }

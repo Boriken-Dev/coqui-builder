@@ -12,6 +12,9 @@
 //! - A group's fields, an open map's entries and a variant's fields (when both sides are the
 //!   same arm) are walked.
 //! - A leaf is compared as typed values (`30s` equals `30000ms`), never as text.
+//! - An untagged enum is compared as its text arm when both sides are text, as its structured
+//!   arm when both are structured, and is one place, at the enum, when the sides differ: the
+//!   text shows as `Type(text)` and the structured arm as `{key: Type(text), ..}`.
 //! - A list of leaves is one place, compared item by item and shown whole.
 //! - A switched arm is one place, at its tag; a group present on one side only is one place,
 //!   at the group, with no value.
@@ -26,7 +29,7 @@ use core::fmt;
 
 use crate::Describe;
 use crate::datum::{Datum, Shown};
-use crate::describe::{Description, Field, Kind, LeafInfo};
+use crate::describe::{Description, Field, Kind, LeafInfo, Union};
 use crate::inspect::{Entries, Inspect};
 use crate::path::{KeyPath, Segment};
 use crate::profile::Expect;
@@ -64,7 +67,7 @@ impl From<&Finding> for NonDefault {
         let ty = match finding.value() {
             Shown::One(d) => d.ty(),
             Shown::Items(items) => items.first().map_or("String", Datum::ty),
-            Shown::Unset => "String",
+            Shown::Fields(_) | Shown::Unset => "String",
         };
         let default = match finding.expected() {
             Expect::Equal(text) => Shown::One(Datum::new(ty, text.as_str())),
@@ -131,6 +134,7 @@ impl MaskedLike for Shown {
         let hidden = match value {
             Shown::One(d) => d.is_sensitive(),
             Shown::Items(items) => items.iter().any(Datum::is_sensitive),
+            Shown::Fields(fields) => fields.iter().any(|(_, d)| d.is_sensitive()),
             Shown::Unset => false,
         };
         if hidden { self.sensitive() } else { self }
@@ -322,7 +326,85 @@ impl Walk<'_> {
                     }
                 }
             }
-            Kind::Union(_) => {}
+            Kind::Union(union) => self.union(union, field, path),
+        }
+    }
+
+    /// Which side of an untagged enum `side` holds at `path`.
+    fn side(side: &dyn Inspect, path: &[Segment]) -> Side {
+        if let Some(text) = text_of(side.at(path)) {
+            Side::Text(text)
+        } else if side.entries(path).is_some() {
+            Side::Structured
+        } else {
+            Side::Absent
+        }
+    }
+
+    fn union(&mut self, union: &Union, field: Option<&Field>, path: &mut Vec<Segment>) {
+        let default = match field.and_then(|f| f.default.clone()) {
+            Some(text) => Side::Text(text),
+            None if union.default_is_structured() => Side::Structured,
+            None => Side::Absent,
+        };
+        let v = match Self::side(self.value, path) {
+            Side::Absent => default.clone(),
+            side => side,
+        };
+        let baseline = self
+            .baseline
+            .map(|baseline| (baseline, Self::side(baseline, path)))
+            .filter(|(_, side)| !matches!(side, Side::Absent));
+        let b = match &baseline {
+            Some((_, side)) => side.clone(),
+            None => default,
+        };
+        match (&v, &b) {
+            (Side::Absent, Side::Absent) => {}
+            (Side::Text(a), Side::Text(c)) => {
+                self.leaf(union.text(), None, path, Some(a.clone()), Some(c.clone()));
+            }
+            (Side::Structured, Side::Structured) => {
+                self.place(union.structured(), field, false, path);
+            }
+            _ => {
+                let text = |t: &String| Shown::One(Datum::new(union.text().ty(), t.as_str()));
+                let shown = |side: &Side, from: Option<&dyn Inspect>| match side {
+                    Side::Absent => Shown::Unset,
+                    Side::Text(t) => text(t),
+                    Side::Structured => {
+                        let mut out = Vec::new();
+                        let mut at = path.clone();
+                        render(
+                            union.structured(),
+                            field,
+                            from,
+                            &mut at,
+                            &mut Vec::new(),
+                            false,
+                            &mut out,
+                        );
+                        Shown::Fields(out)
+                    }
+                };
+                let expected = match &b {
+                    Side::Absent => Expect::Absent,
+                    Side::Text(t) => Expect::Equal(t.clone()),
+                    Side::Structured => Expect::Required,
+                };
+                let value = shown(&v, Some(self.value));
+                let default = shown(&b, baseline.as_ref().map(|(side, _)| *side));
+                self.found.push((
+                    Finding::new(
+                        KeyPath::new(path.to_vec()),
+                        false,
+                        value,
+                        expected,
+                        Some(Reason::Differs),
+                    ),
+                    default,
+                ));
+            }
         }
     }
 
@@ -420,5 +502,113 @@ impl Walk<'_> {
             ),
             shown(&b),
         ));
+    }
+}
+
+/// Which arm of an untagged enum a side holds.
+#[derive(Clone)]
+enum Side {
+    Absent,
+    Text(String),
+    Structured,
+}
+
+/// The leaves of a structured arm as `(key below the enum, datum)`: what `side` holds there,
+/// else the defaults the description states. A secret is marked as one.
+fn render(
+    description: &Description,
+    field: Option<&Field>,
+    side: Option<&dyn Inspect>,
+    path: &mut Vec<Segment>,
+    rel: &mut Vec<Segment>,
+    inherited: bool,
+    out: &mut Vec<(String, Datum)>,
+) {
+    let secret = inherited || description.notes().sensitive;
+    let name = |rel: &[Segment]| alloc::string::ToString::to_string(&KeyPath::new(rel.to_vec()));
+    let children = |fields: &[Field],
+                    path: &mut Vec<Segment>,
+                    rel: &mut Vec<Segment>,
+                    out: &mut Vec<(String, Datum)>| {
+        for child in fields {
+            path.push(Segment::Key(child.key.clone()));
+            rel.push(Segment::Key(child.key.clone()));
+            render(
+                &child.description,
+                Some(child),
+                side,
+                path,
+                rel,
+                secret,
+                out,
+            );
+            rel.pop();
+            path.pop();
+        }
+    };
+    match description.kind() {
+        Kind::Group(group) => children(&group.fields, path, rel, out),
+        Kind::Variant(variant) => {
+            let mut tag = path.clone();
+            tag.push(Segment::Key(variant.tag().into()));
+            let chosen = side
+                .and_then(|s| text_of(s.at(&tag)))
+                .or_else(|| variant.default_arm().map(String::from));
+            if let Some(chosen) = chosen {
+                let mut at = rel.clone();
+                at.push(Segment::Key(variant.tag().into()));
+                out.push((name(&at), Datum::new("String", chosen.as_str())));
+                if let Some(arm) = variant.arm(&chosen) {
+                    children(&arm.fields, path, rel, out);
+                }
+            }
+        }
+        Kind::Leaf(info) => {
+            let text = side
+                .and_then(|s| text_of(s.at(path)))
+                .or_else(|| field.and_then(|f| f.default.clone()));
+            if let Some(text) = text {
+                let datum = Datum::new(info.ty(), text.as_str());
+                out.push((name(rel), if secret { datum.sensitive() } else { datum }));
+            }
+        }
+        Kind::List(item) => {
+            let count = match side.and_then(|s| s.entries(path)) {
+                Some(Entries::Len(count)) => count,
+                _ => field
+                    .and_then(|f| f.default_items.as_ref())
+                    .map_or(0, Vec::len),
+            };
+            for index in 0..count {
+                path.push(Segment::Index(index));
+                rel.push(Segment::Index(index));
+                let mut entry = Field::new("", (**item).clone());
+                entry.default = field
+                    .and_then(|f| f.default_items.as_ref())
+                    .and_then(|items| items.get(index))
+                    .cloned();
+                render(item, Some(&entry), side, path, rel, secret, out);
+                rel.pop();
+                path.pop();
+            }
+        }
+        Kind::Map(value) => {
+            if let Some(Entries::Keys(keys)) = side.and_then(|s| s.entries(path)) {
+                for key in keys {
+                    path.push(Segment::Key(key.clone()));
+                    rel.push(Segment::Key(key));
+                    render(value, None, side, path, rel, secret, out);
+                    rel.pop();
+                    path.pop();
+                }
+            }
+        }
+        Kind::Union(union) => match side.and_then(|s| text_of(s.at(path))) {
+            Some(text) => {
+                let datum = Datum::new(union.text().ty(), text.as_str());
+                out.push((name(rel), if secret { datum.sensitive() } else { datum }));
+            }
+            None => render(union.structured(), field, side, path, rel, secret, out),
+        },
     }
 }

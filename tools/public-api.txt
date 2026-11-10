@@ -35,6 +35,7 @@ pub fn coqui_builder::profile::Profile::check(&self, &T, &mut coqui_builder::rep
 pub fn coqui_builder::profile::Profile::verify(&self, &T) -> coqui_builder::report::Report where T: coqui_builder::describe::Describe
 pub mod coqui_builder::datum
 pub enum coqui_builder::datum::Shown
+pub coqui_builder::datum::Shown::Fields(alloc::vec::Vec<(alloc::string::String, coqui_builder::datum::Datum)>)
 pub coqui_builder::datum::Shown::Items(alloc::vec::Vec<coqui_builder::datum::Datum>)
 pub coqui_builder::datum::Shown::One(coqui_builder::datum::Datum)
 pub coqui_builder::datum::Shown::Unset
@@ -67,7 +68,7 @@ pub coqui_builder::describe::Kind::Group(coqui_builder::describe::Group)
 pub coqui_builder::describe::Kind::Leaf(coqui_builder::describe::LeafInfo)
 pub coqui_builder::describe::Kind::List(alloc::boxed::Box<coqui_builder::describe::Description>)
 pub coqui_builder::describe::Kind::Map(alloc::boxed::Box<coqui_builder::describe::Description>)
-pub coqui_builder::describe::Kind::Union(alloc::vec::Vec<coqui_builder::describe::Description>)
+pub coqui_builder::describe::Kind::Union(coqui_builder::describe::Union)
 pub coqui_builder::describe::Kind::Variant(coqui_builder::describe::Variant)
 #[non_exhaustive] pub enum coqui_builder::describe::LeafError
 pub coqui_builder::describe::LeafError::Invalid
@@ -112,7 +113,7 @@ pub fn coqui_builder::describe::Description::notes(&self) -> &coqui_builder::des
 pub fn coqui_builder::describe::Description::notes_mut(&mut self) -> &mut coqui_builder::describe::Notes
 pub fn coqui_builder::describe::Description::resolve(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::describe::Resolved<'_>>
 pub fn coqui_builder::describe::Description::resolve_chosen(&self, &[coqui_builder::path::Segment], &dyn core::ops::function::Fn(&[coqui_builder::path::Segment]) -> core::option::Option<alloc::string::String>) -> core::option::Option<coqui_builder::describe::Resolved<'_>>
-pub fn coqui_builder::describe::Description::union(alloc::vec::Vec<coqui_builder::describe::Description>) -> coqui_builder::describe::Description
+pub fn coqui_builder::describe::Description::union(coqui_builder::describe::LeafInfo, coqui_builder::describe::Description) -> coqui_builder::describe::Description
 pub fn coqui_builder::describe::Description::variant(coqui_builder::describe::Variant) -> coqui_builder::describe::Description
 #[non_exhaustive] pub struct coqui_builder::describe::Field
 pub coqui_builder::describe::Field::default: core::option::Option<alloc::string::String>
@@ -130,6 +131,7 @@ pub struct coqui_builder::describe::Gate
 impl coqui_builder::describe::Gate
 pub fn coqui_builder::describe::Gate::arms(&self) -> core::option::Option<&[alloc::string::String]>
 pub fn coqui_builder::describe::Gate::at(&self) -> &coqui_builder::path::KeyPath
+pub fn coqui_builder::describe::Gate::is_union(&self) -> bool
 #[non_exhaustive] pub struct coqui_builder::describe::Group
 pub coqui_builder::describe::Group::deny_unknown_fields: bool
 pub coqui_builder::describe::Group::fields: alloc::vec::Vec<coqui_builder::describe::Field>
@@ -187,6 +189,12 @@ pub fn coqui_builder::describe::Resolved<'a>::default_items(&self) -> core::opti
 pub fn coqui_builder::describe::Resolved<'a>::description(&self) -> &'a coqui_builder::describe::Description
 pub fn coqui_builder::describe::Resolved<'a>::field(&self) -> core::option::Option<&'a coqui_builder::describe::Field>
 pub fn coqui_builder::describe::Resolved<'a>::gates(&self) -> &[coqui_builder::describe::Gate]
+pub struct coqui_builder::describe::Union
+impl coqui_builder::describe::Union
+pub fn coqui_builder::describe::Union::default_is_structured(&self) -> bool
+pub fn coqui_builder::describe::Union::new(coqui_builder::describe::LeafInfo, coqui_builder::describe::Description) -> coqui_builder::describe::Union
+pub fn coqui_builder::describe::Union::structured(&self) -> &coqui_builder::describe::Description
+pub fn coqui_builder::describe::Union::text(&self) -> &coqui_builder::describe::LeafInfo
 pub struct coqui_builder::describe::Variant
 impl coqui_builder::describe::Variant
 pub fn coqui_builder::describe::Variant::arm(&self, &str) -> core::option::Option<&coqui_builder::describe::Arm>
@@ -215,34 +223,42 @@ pub fn coqui_builder::describe::Native::same(&T, &T) -> bool
 pub fn coqui_builder::describe::Native::to_text(&T) -> alloc::string::String
 pub trait coqui_builder::describe::Describe: core::marker::Sized
 pub type coqui_builder::describe::Describe::Fill: coqui_builder::fill::Fill<Self>
+pub const coqui_builder::describe::Describe::LEAF: bool
 pub const coqui_builder::describe::Describe::OPTIONAL: bool
 pub fn coqui_builder::describe::Describe::description() -> coqui_builder::describe::Description
 impl coqui_builder::describe::Describe for coqui_builder::Expect
 pub type coqui_builder::Expect::Fill = coqui_builder::profile::ExpectFill
+pub const coqui_builder::Expect::LEAF: bool
 pub const coqui_builder::Expect::OPTIONAL: bool
 pub fn coqui_builder::Expect::description() -> coqui_builder::describe::Description
 impl coqui_builder::describe::Describe for coqui_builder::profile::Profile
 pub type coqui_builder::profile::Profile::Fill = coqui_builder::profile::ProfileFill
+pub const coqui_builder::profile::Profile::LEAF: bool
 pub const coqui_builder::profile::Profile::OPTIONAL: bool
 pub fn coqui_builder::profile::Profile::description() -> coqui_builder::describe::Description
 impl<T: coqui_builder::Leaf> coqui_builder::describe::Describe for T
 pub type T::Fill = coqui_builder::fill::LeafSlot<T>
+pub const T::LEAF: bool
 pub const T::OPTIONAL: bool
 pub fn T::description() -> coqui_builder::describe::Description
 impl<T: coqui_builder::describe::Describe> coqui_builder::describe::Describe for alloc::vec::Vec<T>
 pub type alloc::vec::Vec<T>::Fill = coqui_builder::fill::ListSlot<T, <T as coqui_builder::describe::Describe>::Fill>
+pub const alloc::vec::Vec<T>::LEAF: bool
 pub const alloc::vec::Vec<T>::OPTIONAL: bool
 pub fn alloc::vec::Vec<T>::description() -> coqui_builder::describe::Description
 impl<T: coqui_builder::describe::Describe> coqui_builder::describe::Describe for core::option::Option<T>
 pub type core::option::Option<T>::Fill = coqui_builder::fill::OptionSlot<T, <T as coqui_builder::describe::Describe>::Fill>
+pub const core::option::Option<T>::LEAF: bool
 pub const core::option::Option<T>::OPTIONAL: bool
 pub fn core::option::Option<T>::description() -> coqui_builder::describe::Description
 impl<V: coqui_builder::describe::Describe, S: core::hash::BuildHasher + core::default::Default> coqui_builder::describe::Describe for std::collections::hash::map::HashMap<alloc::string::String, V, S>
 pub type std::collections::hash::map::HashMap<alloc::string::String, V, S>::Fill = coqui_builder::fill::MapSlot<std::collections::hash::map::HashMap<alloc::string::String, V, S>, V, <V as coqui_builder::describe::Describe>::Fill>
+pub const std::collections::hash::map::HashMap<alloc::string::String, V, S>::LEAF: bool
 pub const std::collections::hash::map::HashMap<alloc::string::String, V, S>::OPTIONAL: bool
 pub fn std::collections::hash::map::HashMap<alloc::string::String, V, S>::description() -> coqui_builder::describe::Description
 impl<V: coqui_builder::describe::Describe> coqui_builder::describe::Describe for alloc::collections::btree::map::BTreeMap<alloc::string::String, V>
 pub type alloc::collections::btree::map::BTreeMap<alloc::string::String, V>::Fill = coqui_builder::fill::MapSlot<alloc::collections::btree::map::BTreeMap<alloc::string::String, V>, V, <V as coqui_builder::describe::Describe>::Fill>
+pub const alloc::collections::btree::map::BTreeMap<alloc::string::String, V>::LEAF: bool
 pub const alloc::collections::btree::map::BTreeMap<alloc::string::String, V>::OPTIONAL: bool
 pub fn alloc::collections::btree::map::BTreeMap<alloc::string::String, V>::description() -> coqui_builder::describe::Description
 pub trait coqui_builder::describe::Leaf: core::marker::Sized
@@ -846,6 +862,7 @@ impl coqui_builder::Expect
 pub fn coqui_builder::Expect::masked(&self) -> coqui_builder::Expect
 impl coqui_builder::describe::Describe for coqui_builder::Expect
 pub type coqui_builder::Expect::Fill = coqui_builder::profile::ExpectFill
+pub const coqui_builder::Expect::LEAF: bool
 pub const coqui_builder::Expect::OPTIONAL: bool
 pub fn coqui_builder::Expect::description() -> coqui_builder::describe::Description
 impl coqui_builder::fill::Fill<coqui_builder::Expect> for coqui_builder::profile::ExpectFill
@@ -894,6 +911,7 @@ pub fn coqui_builder::profile::Profile::new() -> coqui_builder::profile::Profile
 pub fn coqui_builder::profile::Profile::remove(&mut self, &coqui_builder::path::KeyPath) -> core::option::Option<coqui_builder::Expect>
 impl coqui_builder::describe::Describe for coqui_builder::profile::Profile
 pub type coqui_builder::profile::Profile::Fill = coqui_builder::profile::ProfileFill
+pub const coqui_builder::profile::Profile::LEAF: bool
 pub const coqui_builder::profile::Profile::OPTIONAL: bool
 pub fn coqui_builder::profile::Profile::description() -> coqui_builder::describe::Description
 impl coqui_builder::fill::Fill<coqui_builder::profile::Profile> for coqui_builder::profile::ProfileFill
@@ -1003,6 +1021,7 @@ impl coqui_builder::Expect
 pub fn coqui_builder::Expect::masked(&self) -> coqui_builder::Expect
 impl coqui_builder::describe::Describe for coqui_builder::Expect
 pub type coqui_builder::Expect::Fill = coqui_builder::profile::ExpectFill
+pub const coqui_builder::Expect::LEAF: bool
 pub const coqui_builder::Expect::OPTIONAL: bool
 pub fn coqui_builder::Expect::description() -> coqui_builder::describe::Description
 impl coqui_builder::fill::Fill<coqui_builder::Expect> for coqui_builder::profile::ExpectFill
@@ -1069,6 +1088,7 @@ pub fn coqui_builder::path::Segment::fmt(&self, &mut core::fmt::Formatter<'_>) -
 impl core::iter::traits::collect::FromIterator<coqui_builder::path::Segment> for coqui_builder::path::KeyPath
 pub fn coqui_builder::path::KeyPath::from_iter<I: core::iter::traits::collect::IntoIterator<Item = coqui_builder::path::Segment>>(I) -> coqui_builder::path::KeyPath
 pub enum coqui_builder::Shown
+pub coqui_builder::Shown::Fields(alloc::vec::Vec<(alloc::string::String, coqui_builder::datum::Datum)>)
 pub coqui_builder::Shown::Items(alloc::vec::Vec<coqui_builder::datum::Datum>)
 pub coqui_builder::Shown::One(coqui_builder::datum::Datum)
 pub coqui_builder::Shown::Unset
@@ -1127,7 +1147,7 @@ pub fn coqui_builder::describe::Description::notes(&self) -> &coqui_builder::des
 pub fn coqui_builder::describe::Description::notes_mut(&mut self) -> &mut coqui_builder::describe::Notes
 pub fn coqui_builder::describe::Description::resolve(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::describe::Resolved<'_>>
 pub fn coqui_builder::describe::Description::resolve_chosen(&self, &[coqui_builder::path::Segment], &dyn core::ops::function::Fn(&[coqui_builder::path::Segment]) -> core::option::Option<alloc::string::String>) -> core::option::Option<coqui_builder::describe::Resolved<'_>>
-pub fn coqui_builder::describe::Description::union(alloc::vec::Vec<coqui_builder::describe::Description>) -> coqui_builder::describe::Description
+pub fn coqui_builder::describe::Description::union(coqui_builder::describe::LeafInfo, coqui_builder::describe::Description) -> coqui_builder::describe::Description
 pub fn coqui_builder::describe::Description::variant(coqui_builder::describe::Variant) -> coqui_builder::describe::Description
 pub struct coqui_builder::Env
 impl coqui_builder::env::Env
@@ -1247,6 +1267,7 @@ pub fn coqui_builder::profile::Profile::new() -> coqui_builder::profile::Profile
 pub fn coqui_builder::profile::Profile::remove(&mut self, &coqui_builder::path::KeyPath) -> core::option::Option<coqui_builder::Expect>
 impl coqui_builder::describe::Describe for coqui_builder::profile::Profile
 pub type coqui_builder::profile::Profile::Fill = coqui_builder::profile::ProfileFill
+pub const coqui_builder::profile::Profile::LEAF: bool
 pub const coqui_builder::profile::Profile::OPTIONAL: bool
 pub fn coqui_builder::profile::Profile::description() -> coqui_builder::describe::Description
 impl coqui_builder::fill::Fill<coqui_builder::profile::Profile> for coqui_builder::profile::ProfileFill
@@ -1303,34 +1324,42 @@ pub fn coqui_builder::profile::Profile::check(&self, &T, &mut coqui_builder::rep
 pub fn coqui_builder::profile::Profile::verify(&self, &T) -> coqui_builder::report::Report where T: coqui_builder::describe::Describe
 pub trait coqui_builder::Describe: core::marker::Sized
 pub type coqui_builder::Describe::Fill: coqui_builder::fill::Fill<Self>
+pub const coqui_builder::Describe::LEAF: bool
 pub const coqui_builder::Describe::OPTIONAL: bool
 pub fn coqui_builder::Describe::description() -> coqui_builder::describe::Description
 impl coqui_builder::describe::Describe for coqui_builder::Expect
 pub type coqui_builder::Expect::Fill = coqui_builder::profile::ExpectFill
+pub const coqui_builder::Expect::LEAF: bool
 pub const coqui_builder::Expect::OPTIONAL: bool
 pub fn coqui_builder::Expect::description() -> coqui_builder::describe::Description
 impl coqui_builder::describe::Describe for coqui_builder::profile::Profile
 pub type coqui_builder::profile::Profile::Fill = coqui_builder::profile::ProfileFill
+pub const coqui_builder::profile::Profile::LEAF: bool
 pub const coqui_builder::profile::Profile::OPTIONAL: bool
 pub fn coqui_builder::profile::Profile::description() -> coqui_builder::describe::Description
 impl<T: coqui_builder::Leaf> coqui_builder::describe::Describe for T
 pub type T::Fill = coqui_builder::fill::LeafSlot<T>
+pub const T::LEAF: bool
 pub const T::OPTIONAL: bool
 pub fn T::description() -> coqui_builder::describe::Description
 impl<T: coqui_builder::describe::Describe> coqui_builder::describe::Describe for alloc::vec::Vec<T>
 pub type alloc::vec::Vec<T>::Fill = coqui_builder::fill::ListSlot<T, <T as coqui_builder::describe::Describe>::Fill>
+pub const alloc::vec::Vec<T>::LEAF: bool
 pub const alloc::vec::Vec<T>::OPTIONAL: bool
 pub fn alloc::vec::Vec<T>::description() -> coqui_builder::describe::Description
 impl<T: coqui_builder::describe::Describe> coqui_builder::describe::Describe for core::option::Option<T>
 pub type core::option::Option<T>::Fill = coqui_builder::fill::OptionSlot<T, <T as coqui_builder::describe::Describe>::Fill>
+pub const core::option::Option<T>::LEAF: bool
 pub const core::option::Option<T>::OPTIONAL: bool
 pub fn core::option::Option<T>::description() -> coqui_builder::describe::Description
 impl<V: coqui_builder::describe::Describe, S: core::hash::BuildHasher + core::default::Default> coqui_builder::describe::Describe for std::collections::hash::map::HashMap<alloc::string::String, V, S>
 pub type std::collections::hash::map::HashMap<alloc::string::String, V, S>::Fill = coqui_builder::fill::MapSlot<std::collections::hash::map::HashMap<alloc::string::String, V, S>, V, <V as coqui_builder::describe::Describe>::Fill>
+pub const std::collections::hash::map::HashMap<alloc::string::String, V, S>::LEAF: bool
 pub const std::collections::hash::map::HashMap<alloc::string::String, V, S>::OPTIONAL: bool
 pub fn std::collections::hash::map::HashMap<alloc::string::String, V, S>::description() -> coqui_builder::describe::Description
 impl<V: coqui_builder::describe::Describe> coqui_builder::describe::Describe for alloc::collections::btree::map::BTreeMap<alloc::string::String, V>
 pub type alloc::collections::btree::map::BTreeMap<alloc::string::String, V>::Fill = coqui_builder::fill::MapSlot<alloc::collections::btree::map::BTreeMap<alloc::string::String, V>, V, <V as coqui_builder::describe::Describe>::Fill>
+pub const alloc::collections::btree::map::BTreeMap<alloc::string::String, V>::LEAF: bool
 pub const alloc::collections::btree::map::BTreeMap<alloc::string::String, V>::OPTIONAL: bool
 pub fn alloc::collections::btree::map::BTreeMap<alloc::string::String, V>::description() -> coqui_builder::describe::Description
 pub trait coqui_builder::Fields: coqui_builder::describe::Describe

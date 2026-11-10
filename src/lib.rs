@@ -57,6 +57,50 @@ pub use profile::{BindError, Expect, Profile};
 pub use report::{Finding, Reason, Report};
 pub use source::{Source, SourceError, Unknown};
 
+/// An untagged enum holds at most one arm that is not a single value, and that arm is not
+/// another untagged enum with a structured arm; both fail when the enum is compiled.
+#[cfg(all(doctest, feature = "derive"))]
+mod untagged_arms {
+    /// Text arms and one structured arm compile.
+    ///
+    /// ```
+    /// use coqui_builder::Describe;
+    /// #[derive(Describe)]
+    /// struct Table { x: u8 }
+    /// #[derive(Describe)]
+    /// #[map(untagged)]
+    /// enum Either { Off, Flag(bool), Table(Table) }
+    /// ```
+    ///
+    /// A second structured arm does not.
+    ///
+    /// ```compile_fail,E0080
+    /// use coqui_builder::Describe;
+    /// #[derive(Describe)]
+    /// struct One { x: u8 }
+    /// #[derive(Describe)]
+    /// struct Two { y: u8 }
+    /// #[derive(Describe)]
+    /// #[map(untagged)]
+    /// enum Either { One(One), Two(Two) }
+    /// ```
+    ///
+    /// Neither does a structured arm that is itself an untagged enum with one.
+    ///
+    /// ```compile_fail,E0080
+    /// use coqui_builder::Describe;
+    /// #[derive(Describe)]
+    /// struct Table { x: u8 }
+    /// #[derive(Describe)]
+    /// #[map(untagged)]
+    /// enum Inner { Off, Table(Table) }
+    /// #[derive(Describe)]
+    /// #[map(untagged)]
+    /// enum Outer { Flag(bool), Inner(Inner) }
+    /// ```
+    struct Rules;
+}
+
 /// What generated code names; not part of the API.
 #[doc(hidden)]
 pub mod __private {
@@ -101,6 +145,40 @@ pub mod __private {
     /// The length of an `Option` of a list, asked at `rest`.
     pub fn entries_opt_list<T>(value: &Option<Vec<T>>, rest: &[Segment]) -> Option<Entries> {
         entries_list(value.as_ref()?, rest)
+    }
+
+    /// The value of a single-value arm of an untagged enum that reads `text`.
+    pub fn parse_arm<T: crate::Describe>(text: &str) -> Option<T> {
+        use crate::fill::Fill;
+        let mut fill = <T::Fill as Default>::default();
+        fill.set(&[], text).ok()?;
+        fill.build(&crate::path::KeyPath::root(), &mut Vec::new())
+    }
+
+    /// Forgets everything set in `fill`, keeping the defaults it was given.
+    pub fn forget<T, F: crate::fill::Fill<T>>(fill: &mut F) {
+        forget_at::<T, F>(fill, &mut Vec::new());
+    }
+
+    fn forget_at<T, F: crate::fill::Fill<T>>(fill: &mut F, path: &mut Vec<Segment>) {
+        if fill.clear(path).is_ok() {
+            return;
+        }
+        if let Some(Entries::Keys(keys)) = fill.entries(path) {
+            for key in keys {
+                path.push(Segment::Key(key));
+                forget_at::<T, F>(fill, path);
+                path.pop();
+            }
+        }
+    }
+
+    /// The text of a single-value arm of an untagged enum.
+    pub fn arm_text<T: crate::Inspect>(value: &T) -> String {
+        value
+            .at(&[])
+            .map(|d| String::from(d.text()))
+            .unwrap_or_default()
     }
 }
 

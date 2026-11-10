@@ -1,0 +1,167 @@
+{
+  "about": "Untagged enums with text arms and one structured arm. A case fills a root type from its layers in order (a JSON document read by a hand-written source, or environment variables with the prefix APP) and expects the built value, the keys still missing, or an error whose message holds the text given. Cached holds a CacheSetting (Enabled(bool) | Tuned(CacheOptions), default Enabled(true)); Vetted holds a Switch (On | Off | Custom(Definition), lowercase names, required).",
+  "cases": [
+    {
+      "name": "a boolean true is the text arm",
+      "root": "Cached",
+      "layers": [{"json": {"cache": true}}],
+      "expect": {"built": {"enabled": true}}
+    },
+    {
+      "name": "a boolean false is the text arm",
+      "root": "Cached",
+      "layers": [{"json": {"cache": false}}],
+      "expect": {"built": {"enabled": false}}
+    },
+    {
+      "name": "a table is the structured arm",
+      "root": "Cached",
+      "layers": [{"json": {"cache": {"ttl": "30s"}}}],
+      "expect": {"built": {"tuned": {"ttl_secs": 30, "size": 1024, "token": null}}}
+    },
+    {
+      "name": "a table with every key",
+      "root": "Cached",
+      "layers": [{"json": {"cache": {"ttl": "2m", "size": 8, "token": "t"}}}],
+      "expect": {"built": {"tuned": {"ttl_secs": 120, "size": 8, "token": "t"}}}
+    },
+    {
+      "name": "an empty table is the structured arm with its defaults",
+      "root": "Cached",
+      "layers": [{"json": {"cache": {}}}],
+      "expect": {"built": {"tuned": {"ttl_secs": 60, "size": 1024, "token": null}}}
+    },
+    {
+      "name": "nothing given is the default text arm",
+      "root": "Cached",
+      "layers": [{"json": {}}],
+      "expect": {"built": {"enabled": true}}
+    },
+    {
+      "name": "a number is not a boolean",
+      "root": "Cached",
+      "layers": [{"json": {"cache": 7}}],
+      "expect": {"error": "cache: text that is not a CacheSetting"}
+    },
+    {
+      "name": "a text naming no arm is refused",
+      "root": "Cached",
+      "layers": [{"json": {"cache": "maybe"}}],
+      "expect": {"error": "cache: text that is not a CacheSetting"}
+    },
+    {
+      "name": "a bad value inside the table is refused under its key",
+      "root": "Cached",
+      "layers": [{"json": {"cache": {"ttl": "soon"}}}],
+      "expect": {"error": "cache.ttl"}
+    },
+    {
+      "name": "a key the structured arm does not declare is refused when it denies them",
+      "root": "Cached",
+      "layers": [{"json": {"cache": {"ttl": "1s", "bogus": 1}}}],
+      "expect": {"error": "unknown settings: cache.bogus"}
+    },
+    {
+      "name": "a table over a text takes the structured arm",
+      "root": "Cached",
+      "layers": [{"json": {"cache": false}}, {"json": {"cache": {"size": 4}}}],
+      "expect": {"built": {"tuned": {"ttl_secs": 60, "size": 4, "token": null}}}
+    },
+    {
+      "name": "a text over a table takes the text arm",
+      "root": "Cached",
+      "layers": [{"json": {"cache": {"size": 4}}}, {"json": {"cache": false}}],
+      "expect": {"built": {"enabled": false}}
+    },
+    {
+      "name": "a table over a table keeps the keys it does not set",
+      "root": "Cached",
+      "layers": [{"json": {"cache": {"size": 4, "ttl": "5s"}}}, {"json": {"cache": {"size": 9}}}],
+      "expect": {"built": {"tuned": {"ttl_secs": 5, "size": 9, "token": null}}}
+    },
+    {
+      "name": "the environment false is the text arm",
+      "root": "Cached",
+      "layers": [{"env": {"APP_CACHE": "false"}}],
+      "expect": {"built": {"enabled": false}}
+    },
+    {
+      "name": "the environment key below is the structured arm",
+      "root": "Cached",
+      "layers": [{"env": {"APP_CACHE__TTL": "30s"}}],
+      "expect": {"built": {"tuned": {"ttl_secs": 30, "size": 1024, "token": null}}}
+    },
+    {
+      "name": "the environment holding both is refused",
+      "root": "Cached",
+      "layers": [{"env": {"APP_CACHE": "false", "APP_CACHE__TTL": "30s"}}],
+      "expect": {"error": "cache is given both as a value and as keys below it"}
+    },
+    {
+      "name": "the environment text refused by every arm",
+      "root": "Cached",
+      "layers": [{"env": {"APP_CACHE": "perhaps"}}],
+      "expect": {"error": "cache: text that is not a CacheSetting"}
+    },
+    {
+      "name": "the environment over a file",
+      "root": "Cached",
+      "layers": [{"json": {"cache": {"size": 2}}}, {"env": {"APP_CACHE": "true"}}],
+      "expect": {"built": {"enabled": true}}
+    },
+    {
+      "name": "a switch name is the text arm",
+      "root": "Vetted",
+      "layers": [{"json": {"vetting": "on"}}],
+      "expect": {"built": "on"}
+    },
+    {
+      "name": "the other switch name",
+      "root": "Vetted",
+      "layers": [{"json": {"vetting": "off"}}],
+      "expect": {"built": "off"}
+    },
+    {
+      "name": "a switch table is the structured arm",
+      "root": "Vetted",
+      "layers": [{"json": {"vetting": {"name": "strict"}}}],
+      "expect": {"built": {"custom": {"name": "strict", "level": 3}}}
+    },
+    {
+      "name": "a switch text naming no arm is refused with the text leaf's message",
+      "root": "Vetted",
+      "layers": [{"json": {"vetting": "maybe"}}],
+      "expect": {"error": "vetting: text that is not a Switch"}
+    },
+    {
+      "name": "a switch name is case sensitive",
+      "root": "Vetted",
+      "layers": [{"json": {"vetting": "On"}}],
+      "expect": {"error": "vetting: text that is not a Switch"}
+    },
+    {
+      "name": "a switch table missing its required key is reported under the switch",
+      "root": "Vetted",
+      "layers": [{"json": {"vetting": {"level": 2}}}],
+      "expect": {"missing": ["vetting.name"]}
+    },
+    {
+      "name": "a switch not given is missing",
+      "root": "Vetted",
+      "layers": [{"json": {}}],
+      "expect": {"missing": ["vetting"]}
+    },
+    {
+      "name": "the environment switch name",
+      "root": "Vetted",
+      "layers": [{"env": {"APP_VETTING": "off"}}],
+      "expect": {"built": "off"}
+    },
+    {
+      "name": "the environment switch table",
+      "root": "Vetted",
+      "layers": [{"env": {"APP_VETTING__NAME": "x", "APP_VETTING__LEVEL": "9"}}],
+      "expect": {"built": {"custom": {"name": "x", "level": 9}}}
+    }
+  ]
+}
