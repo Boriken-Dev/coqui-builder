@@ -2,9 +2,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-//! The derive macro of `coqui-builder`, reached through that crate's `derive` feature.
+//! Derives for `coqui-builder`: describe, fill and build any struct field by field. Reached
+//! through that crate's `derive` feature.
 //!
-//! `#[derive(Describe)]` writes everything a settings type needs from one declaration:
+//! `#[derive(Describe)]` writes everything a struct needs from one declaration:
 //! `Describe` (what each key is), the fill that a `Partial` holds, `Inspect` (reading a key
 //! of a value), and `Fields` for a struct of named fields.
 //!

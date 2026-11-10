@@ -1,6 +1,6 @@
 [package]
 name = "coqui-builder-derive"
-description = "The derive macro of coqui-builder, reached through that crate's `derive` feature"
+description = "Derives for coqui-builder: describe, fill and build any struct field by field"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

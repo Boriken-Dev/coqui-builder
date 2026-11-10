@@ -5,6 +5,8 @@ signature, contract and gotchas, so the crate can be used without reading its so
 ships inside the package and is self-contained. Development documentation lives with the
 source at <https://github.com/Boriken-Dev/coqui-builder>.
 
+Derives for `coqui-builder`: describe, fill and build any struct field by field.
+
 A proc-macro crate with no features; its dependencies are `syn` 2 (default features),
 `quote` 1 and `proc-macro2` 1. MSRV 1.89. It holds no `unsafe`. It exports two macros and is
 reached through `coqui-builder`'s `derive` feature, which re-exports it beside the trait of

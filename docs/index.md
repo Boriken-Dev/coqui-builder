@@ -1,7 +1,8 @@
 # coqui-builder
 
-A **crate that describes the settings a builder takes as data, with no value model and no
-dependencies**. A settings type derives `Describe` once; from that one description it is
+A **crate to describe, fill, check and build any struct field by field: builders, partials and
+profiles, with no value model and no dependencies**. Settings are the main example. A struct
+derives `Describe` once; from that one description it is
 filled from any source, a missing key is named, a value is compared with its defaults, and a
 profile says whether a value is what is expected, with every secret hidden. The
 [Rust API reference](https://boriken-dev.github.io/coqui-builder/rust/index.html) lists every item.

@@ -1,6 +1,7 @@
 # `coqui-builder` — API header
 
-Header-file-style reference for the `coqui-builder` crate: every public item with its
+Header-file-style reference for the `coqui-builder` crate, which describes, fills, checks and
+builds any struct field by field: every public item with its
 signature, contract and gotchas, so the crate can be used without reading its source. It
 ships inside the package and is self-contained. Development documentation lives with the
 source at <https://github.com/Boriken-Dev/coqui-builder>.
@@ -28,7 +29,9 @@ others' items are reached there (`builder::Holds`, `builder::BuildError`).
 
 ## The idea
 
-A settings type derives `Describe`. That gives an owned `Description` (what each key is), a
+Describe, fill, check and build any struct field by field: builders, partials and profiles,
+with no dependencies. Settings are the main example. A struct (a settings type, say) derives
+`Describe`. That gives an owned `Description` (what each key is), a
 `Fill` (the type partly filled, held by a `Partial`) and an `Inspect` impl (read a key of a
 value). There is no value model: a setting is one text, read and written by its leaf's own
 parser (a `Datum` is that text with its type's name), and nothing is filled from a whole group.

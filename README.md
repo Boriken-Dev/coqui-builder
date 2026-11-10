@@ -6,8 +6,9 @@
 [![Docs](https://img.shields.io/badge/docs-latest-blue.svg)](https://boriken-dev.github.io/coqui-builder/)
 [![CI](https://img.shields.io/github/actions/workflow/status/Boriken-Dev/coqui-builder/test.yml)](https://github.com/Boriken-Dev/coqui-builder/actions/workflows/test.yml)
 
-**Describe the settings a builder takes as data, with no value model and no dependencies.**
-One derive says what each key is; from that one description a type is filled from any
+**Describe, fill, check and build any struct field by field: builders, partials and profiles,
+with no value model and no dependencies.** Settings are the main example. One derive says what
+each key is; from that one description a type is filled from any
 source, a missing key is named, a value is compared with its defaults, and a profile says
 whether a value meets what is expected, with every secret hidden. See the
 [documentation site](https://boriken-dev.github.io/coqui-builder/).

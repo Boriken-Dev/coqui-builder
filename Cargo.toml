@@ -1,7 +1,7 @@
 [package]
 name = "coqui-builder"
 version = "0.0.0-alpha.0"
-description = "Describe the settings a builder takes as data: fill them from any source, check them against a profile, report what differs from the defaults. No dependencies."
+description = "Describe, fill, check and build any struct field by field: builders, partials and profiles, with no dependencies"
 readme = "README.md"
 edition = "2024"
 rust-version = "1.89"

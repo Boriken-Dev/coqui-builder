@@ -6,7 +6,7 @@
 #![cfg_attr(feature = "derive", doc = include_str!("../README.md"))]
 #![cfg_attr(
     not(feature = "derive"),
-    doc = "Describe the settings a builder takes as data: fill, check, report."
+    doc = "Describe, fill, check and build any struct field by field."
 )]
 #![no_std]
 #![forbid(unsafe_code)]
