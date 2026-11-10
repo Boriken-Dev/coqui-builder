@@ -27,17 +27,24 @@ extern crate self as coqui_builder;
 
 pub mod datum;
 pub mod describe;
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub mod env;
 pub mod fill;
 pub mod inspect;
 pub mod partial;
 pub mod path;
+pub mod source;
 
 pub use datum::{Datum, Shown};
 pub use describe::{Describe, Description, Leaf};
+#[cfg(feature = "std")]
+pub use env::Env;
 pub use fill::{Fill, FillError};
 pub use inspect::{Entries, Inspect};
 pub use partial::{Missing, Partial};
 pub use path::{KeyPath, PathError, Segment};
+pub use source::{Source, SourceError, Unknown};
 
 /// What generated code names; not part of the API.
 #[doc(hidden)]
