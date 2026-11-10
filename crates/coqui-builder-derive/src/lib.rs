@@ -87,6 +87,12 @@ pub fn describe(input: TokenStream) -> TokenStream {
 /// `#[builder(build = X)]` names the type the parts build, by `From<Parts> for X`; with
 /// `fallible` by `TryFrom<Parts> for X`. The builder is `XBuilder`, made by `X::builder()`
 /// or, with `entry = "new"`, by `XBuilder::new()`.
+///
+/// An input's setter takes `impl Into<T>` for its type `T`, except an input whose type is
+/// exactly one of the parts struct's type parameters: that setter takes the parameter itself,
+/// so setting it infers the parameter and needs no turbofish (an `Option<C>`, a `Vec<C>` or a
+/// `C::Item` still takes `impl Into<..>`). The builder
+/// also has `parts()`, which gives what `build` converts, for a terminal written by hand.
 #[proc_macro_derive(Builder, attributes(builder))]
 pub fn builder(input: TokenStream) -> TokenStream {
     builder::expand(input.into()).into()

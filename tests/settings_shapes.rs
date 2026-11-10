@@ -1192,6 +1192,32 @@ fn a_stream_channel_builder_takes_its_codec_and_stream_as_generic_inputs() {
 }
 
 #[test]
+fn generic_inputs_are_inferred_with_no_turbofish_and_settings_set_first() {
+    use transport::stream::StreamChannelSettingsSetters;
+
+    // The settings come before the inputs, so the type parameters are open until the end.
+    let channel = builders::StreamChannelBuilder::new()
+        .max_message(2048usize)
+        .linger(Duration::from_secs(1))
+        .codec(Lines)
+        .stream(Pipe("unix"))
+        .build()
+        .unwrap();
+    assert_eq!(channel.codec, "lines");
+    assert_eq!(channel.halves.1, "unix-write");
+    assert_eq!(channel.settings.max_message, 2048);
+
+    // Inputs first, then a setting.
+    let channel = builders::StreamChannelBuilder::new()
+        .stream(Pipe("tcp"))
+        .codec(Lines)
+        .pending(8usize)
+        .build()
+        .unwrap();
+    assert_eq!(channel.settings.pending, 8);
+}
+
+#[test]
 fn the_settings_of_a_websocket_fill_from_the_keys_a_file_uses() {
     use transport::web::{DialerSettings, Frames, Limits, ListenerSettings, Signaling};
 

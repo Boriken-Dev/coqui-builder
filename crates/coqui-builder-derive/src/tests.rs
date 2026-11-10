@@ -389,6 +389,30 @@ fn parts_is_refused_as_a_setter_for_a_setting_and_for_an_input() {
 }
 
 #[test]
+fn only_an_input_that_is_exactly_a_type_parameter_takes_its_type_itself() {
+    let text = builder_text(
+        "#[builder(build = X, entry = \"new\")] struct P<C, S> { settings: T,          #[builder(input)] channel: C, #[builder(input)] stream: Option<S>,          #[builder(input)] all: Vec<C>, #[builder(input)] name: String,          #[builder(input)] other: core::marker::PhantomData<C>,          #[builder(input)] item: C::Item, #[builder(input)] q: <C as Tr>::A,          #[builder(input)] p: (C) }",
+    );
+    assert!(!text.contains("compile_error"), "{text}");
+    assert!(text.contains("fnchannel(mutself,value:C)->Self"), "{text}");
+    assert!(text.contains("fnp(mutself,value:(C))->Self"), "{text}");
+    for (name, into) in [
+        ("stream", "Into<S>"),
+        ("all", "Into<Vec<C>>"),
+        ("name", "Into<String>"),
+        ("item", "Into<C::Item>"),
+        ("q", "Into<<CasTr>::A>"),
+    ] {
+        assert!(
+            text.contains(&format!(
+                "fn{name}(mutself,value:impl::core::convert::{into})"
+            )),
+            "{name}: {text}"
+        );
+    }
+}
+
+#[test]
 fn a_settings_type_refuses_input() {
     let refused = expand_text("struct S { #[builder(input)] id: u8 }")
         .unwrap_err()

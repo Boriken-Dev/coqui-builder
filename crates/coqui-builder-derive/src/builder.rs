@@ -41,6 +41,22 @@ struct Input {
     doc: Option<String>,
 }
 
+/// Whether `ty` is exactly one of the type parameters of `generics`.
+fn is_type_parameter(ty: &Type, generics: &syn::Generics) -> bool {
+    let ty = match ty {
+        Type::Group(group) => &*group.elem,
+        Type::Paren(paren) => &*paren.elem,
+        other => other,
+    };
+    let Type::Path(path) = ty else {
+        return false;
+    };
+    path.qself.is_none()
+        && generics
+            .type_params()
+            .any(|param| path.path.is_ident(&param.ident))
+}
+
 fn list(keys: &[&str]) -> String {
     keys.iter()
         .map(|k| format!("`{k}`"))
@@ -294,6 +310,17 @@ fn try_expand(tokens: TokenStream) -> syn::Result<TokenStream> {
             .doc
             .clone()
             .unwrap_or_else(|| format!("Sets the input `{}`; the last call wins.", input.name));
+        // A type parameter taken through `impl Into<C>` could never be inferred from the
+        // argument, so an input that is exactly one takes it as it is.
+        if input.optional.is_none() && is_type_parameter(&input.ty, &ast.generics) {
+            return quote! {
+                #[doc = #doc]
+                pub fn #name(mut self, value: #value_ty) -> Self {
+                    self.#field = ::core::option::Option::Some(value);
+                    self
+                }
+            };
+        }
         quote! {
             #[doc = #doc]
             pub fn #name(mut self, value: impl ::core::convert::Into<#value_ty>) -> Self {

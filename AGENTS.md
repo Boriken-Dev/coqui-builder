@@ -244,7 +244,8 @@ generic and `entry = "new"`):
 
 ```rust
 X::builder() / XBuilder::new()                          // nothing set
-fn <input>(self, impl Into<I>) -> Self                  // `Option<J>` inputs take impl Into<J>
+fn <input>(self, impl Into<I>) -> Self                  // `Option<J>` inputs take impl Into<J>; an input
+                                                        // that is a type parameter C takes `C` itself
 fn fill(self, Partial<S>) -> Self                       // Partial::overlay: the last write wins
 fn fill_from(self, &mut impl Source) -> Result<Self, FillError>   // drops `Unknown`
 fn build(self) -> Result<X, Missing>                    // fallible: Result<X, BuildError<E>>

@@ -134,6 +134,10 @@ struct `#[builder(build = X[, name = ".."][, fallible][, entry = "new"][, crate 
   (if generic) and `entry = "new"`, since an inherent `X::builder()` is E0116.
 - `entry = "new"` makes the builder with `XBuilder::new()` instead of `X::builder()`, and is
   required when the parts struct has generic parameters or lifetimes.
+- An input whose type is exactly one of the parts struct's type parameters takes that type itself
+  (`fn channel(self, value: C)`), so setting it infers the parameter; every other input takes
+  `impl Into<T>`, an `Option<C>`, a `Vec<C>` and a `C::Item` included, and those still need the
+  parameters named when nothing else fixes them.
 - An input of type `Option<J>` takes `impl Into<J>` and is never missing; any other input is
   named in `Missing::inputs` while unset.
 - An input setter that is one of `build`, `parts`, `fill`, `fill_from`, `builder`, `new`,
