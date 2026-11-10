@@ -144,6 +144,9 @@ pub trait Codec<T> {
     fn from_text(text: &str) -> Result<T, LeafError>;
     /// The codec declares an order.
     const ORDERED: bool = false;
+    /// The values are secrets: the place is sensitive in its description and every datum read
+    /// from it is marked sensitive.
+    const SENSITIVE: bool = false;
     /// Whether two values are the same setting; by default their texts are equal.
     fn same(a: &T, b: &T) -> bool {
         Self::to_text(a) == Self::to_text(b)

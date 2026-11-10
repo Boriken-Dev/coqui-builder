@@ -39,6 +39,9 @@ pub mod partial;
 pub mod path;
 pub mod profile;
 pub mod report;
+#[cfg(feature = "zeroize")]
+#[cfg_attr(docsrs, doc(cfg(feature = "zeroize")))]
+pub mod secret;
 pub mod source;
 
 pub use builder::Configured;
@@ -57,6 +60,9 @@ pub use partial::{Missing, Partial};
 pub use path::{KeyPath, PathError, Segment};
 pub use profile::{BindError, Expect, Profile};
 pub use report::{Finding, Reason, Report};
+#[cfg(feature = "zeroize")]
+#[cfg_attr(docsrs, doc(cfg(feature = "zeroize")))]
+pub use secret::Secret;
 pub use source::{Source, SourceError, Unknown};
 
 /// An untagged enum holds at most one arm that is not a single value, and that arm is not

@@ -70,6 +70,8 @@ impl core::fmt::Debug for coqui_builder::datum::Datum
 pub fn coqui_builder::datum::Datum::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::fmt::Display for coqui_builder::datum::Datum
 pub fn coqui_builder::datum::Datum::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::ops::drop::Drop for coqui_builder::datum::Datum
+pub fn coqui_builder::datum::Datum::drop(&mut self)
 pub mod coqui_builder::describe
 #[non_exhaustive] pub enum coqui_builder::describe::Bound
 pub coqui_builder::describe::Bound::NotAMultiple
@@ -173,6 +175,7 @@ pub fn coqui_builder::describe::LeafInfo::fmt(&self, &mut core::fmt::Formatter<'
 pub struct coqui_builder::describe::Native
 impl<T: coqui_builder::Leaf> coqui_builder::describe::Codec<T> for coqui_builder::describe::Native
 pub const coqui_builder::describe::Native::ORDERED: bool
+pub const coqui_builder::describe::Native::SENSITIVE: bool
 pub const coqui_builder::describe::Native::TYPE: &'static str
 pub fn coqui_builder::describe::Native::choices() -> core::option::Option<&'static [&'static str]>
 pub fn coqui_builder::describe::Native::from_text(&str) -> core::result::Result<T, coqui_builder::describe::LeafError>
@@ -221,6 +224,7 @@ pub fn coqui_builder::describe::Variant::tag(&self) -> &str
 pub fn coqui_builder::describe::Variant::tag_description(&self) -> &coqui_builder::describe::Description
 pub trait coqui_builder::describe::Codec<T>
 pub const coqui_builder::describe::Codec::ORDERED: bool
+pub const coqui_builder::describe::Codec::SENSITIVE: bool
 pub const coqui_builder::describe::Codec::TYPE: &'static str
 pub fn coqui_builder::describe::Codec::choices() -> core::option::Option<&'static [&'static str]>
 pub fn coqui_builder::describe::Codec::from_text(&str) -> core::result::Result<T, coqui_builder::describe::LeafError>
@@ -228,8 +232,19 @@ pub fn coqui_builder::describe::Codec::labels() -> &'static [(&'static str, &'st
 pub fn coqui_builder::describe::Codec::order(&T, &T) -> core::option::Option<core::cmp::Ordering>
 pub fn coqui_builder::describe::Codec::same(&T, &T) -> bool
 pub fn coqui_builder::describe::Codec::to_text(&T) -> alloc::string::String
+impl<T: coqui_builder::Leaf + zeroize::Zeroize> coqui_builder::describe::Codec<coqui_builder::secret::Secret<T>> for coqui_builder::secret::SecretCodec<T>
+pub const coqui_builder::secret::SecretCodec<T>::ORDERED: bool
+pub const coqui_builder::secret::SecretCodec<T>::SENSITIVE: bool
+pub const coqui_builder::secret::SecretCodec<T>::TYPE: &'static str
+pub fn coqui_builder::secret::SecretCodec<T>::choices() -> core::option::Option<&'static [&'static str]>
+pub fn coqui_builder::secret::SecretCodec<T>::from_text(&str) -> core::result::Result<coqui_builder::secret::Secret<T>, coqui_builder::describe::LeafError>
+pub fn coqui_builder::secret::SecretCodec<T>::labels() -> &'static [(&'static str, &'static str)]
+pub fn coqui_builder::secret::SecretCodec<T>::order(&coqui_builder::secret::Secret<T>, &coqui_builder::secret::Secret<T>) -> core::option::Option<core::cmp::Ordering>
+pub fn coqui_builder::secret::SecretCodec<T>::same(&coqui_builder::secret::Secret<T>, &coqui_builder::secret::Secret<T>) -> bool
+pub fn coqui_builder::secret::SecretCodec<T>::to_text(&coqui_builder::secret::Secret<T>) -> alloc::string::String
 impl<T: coqui_builder::Leaf> coqui_builder::describe::Codec<T> for coqui_builder::describe::Native
 pub const coqui_builder::describe::Native::ORDERED: bool
+pub const coqui_builder::describe::Native::SENSITIVE: bool
 pub const coqui_builder::describe::Native::TYPE: &'static str
 pub fn coqui_builder::describe::Native::choices() -> core::option::Option<&'static [&'static str]>
 pub fn coqui_builder::describe::Native::from_text(&str) -> core::result::Result<T, coqui_builder::describe::LeafError>
@@ -252,6 +267,11 @@ pub type coqui_builder::profile::Profile::Fill = coqui_builder::profile::Profile
 pub const coqui_builder::profile::Profile::LEAF: bool
 pub const coqui_builder::profile::Profile::OPTIONAL: bool
 pub fn coqui_builder::profile::Profile::description() -> coqui_builder::describe::Description
+impl<T: coqui_builder::Leaf + zeroize::Zeroize> coqui_builder::describe::Describe for coqui_builder::secret::Secret<T>
+pub type coqui_builder::secret::Secret<T>::Fill = coqui_builder::fill::LeafSlot<coqui_builder::secret::Secret<T>, coqui_builder::secret::SecretCodec<T>>
+pub const coqui_builder::secret::Secret<T>::LEAF: bool
+pub const coqui_builder::secret::Secret<T>::OPTIONAL: bool
+pub fn coqui_builder::secret::Secret<T>::description() -> coqui_builder::describe::Description
 impl<T: coqui_builder::Leaf> coqui_builder::describe::Describe for T
 pub type T::Fill = coqui_builder::fill::LeafSlot<T>
 pub const T::LEAF: bool
@@ -524,6 +544,8 @@ pub fn coqui_builder::env::Env::unknown(&mut self, &dyn core::ops::function::Fn(
 pub fn coqui_builder::env::Env::value(&mut self, &coqui_builder::path::KeyPath, &coqui_builder::describe::LeafInfo) -> core::result::Result<core::option::Option<alloc::string::String>, coqui_builder::source::SourceError>
 impl core::fmt::Debug for coqui_builder::env::Env
 pub fn coqui_builder::env::Env::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::ops::drop::Drop for coqui_builder::env::Env
+pub fn coqui_builder::env::Env::drop(&mut self)
 pub mod coqui_builder::fill
 #[non_exhaustive] pub enum coqui_builder::fill::FillErrorKind
 pub coqui_builder::fill::FillErrorKind::Bound(coqui_builder::describe::Bound)
@@ -741,6 +763,9 @@ pub fn coqui_builder::fill::ListSlot<T, F>::entries(&self, &[coqui_builder::path
 impl<T, F: coqui_builder::inspect::Inspect> coqui_builder::inspect::Inspect for coqui_builder::fill::OptionSlot<T, F>
 pub fn coqui_builder::fill::OptionSlot<T, F>::at(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::datum::Datum>
 pub fn coqui_builder::fill::OptionSlot<T, F>::entries(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::inspect::Entries>
+impl<T: coqui_builder::Leaf + zeroize::Zeroize> coqui_builder::inspect::Inspect for coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::at(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::datum::Datum>
+pub fn coqui_builder::secret::Secret<T>::entries(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::inspect::Entries>
 impl<T: coqui_builder::Leaf> coqui_builder::inspect::Inspect for T
 pub fn T::at(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::datum::Datum>
 pub fn T::entries(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::inspect::Entries>
@@ -1016,6 +1041,53 @@ pub fn coqui_builder::report::Report::len(&self) -> usize
 pub fn coqui_builder::report::Report::new(&coqui_builder::describe::Description) -> coqui_builder::report::Report
 pub fn coqui_builder::report::Report::push(&mut self, coqui_builder::report::Finding)
 pub fn coqui_builder::report::Report::unmet(&self) -> impl core::iter::traits::iterator::Iterator<Item = &coqui_builder::report::Finding>
+pub mod coqui_builder::secret
+pub struct coqui_builder::secret::Secret<T: zeroize::Zeroize>
+impl<T: zeroize::Zeroize> coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::expose(&self) -> &T
+pub fn coqui_builder::secret::Secret<T>::new(T) -> coqui_builder::secret::Secret<T>
+impl<T: coqui_builder::Leaf + zeroize::Zeroize> coqui_builder::describe::Codec<coqui_builder::secret::Secret<T>> for coqui_builder::secret::SecretCodec<T>
+pub const coqui_builder::secret::SecretCodec<T>::ORDERED: bool
+pub const coqui_builder::secret::SecretCodec<T>::SENSITIVE: bool
+pub const coqui_builder::secret::SecretCodec<T>::TYPE: &'static str
+pub fn coqui_builder::secret::SecretCodec<T>::choices() -> core::option::Option<&'static [&'static str]>
+pub fn coqui_builder::secret::SecretCodec<T>::from_text(&str) -> core::result::Result<coqui_builder::secret::Secret<T>, coqui_builder::describe::LeafError>
+pub fn coqui_builder::secret::SecretCodec<T>::labels() -> &'static [(&'static str, &'static str)]
+pub fn coqui_builder::secret::SecretCodec<T>::order(&coqui_builder::secret::Secret<T>, &coqui_builder::secret::Secret<T>) -> core::option::Option<core::cmp::Ordering>
+pub fn coqui_builder::secret::SecretCodec<T>::same(&coqui_builder::secret::Secret<T>, &coqui_builder::secret::Secret<T>) -> bool
+pub fn coqui_builder::secret::SecretCodec<T>::to_text(&coqui_builder::secret::Secret<T>) -> alloc::string::String
+impl<T: coqui_builder::Leaf + zeroize::Zeroize> coqui_builder::describe::Describe for coqui_builder::secret::Secret<T>
+pub type coqui_builder::secret::Secret<T>::Fill = coqui_builder::fill::LeafSlot<coqui_builder::secret::Secret<T>, coqui_builder::secret::SecretCodec<T>>
+pub const coqui_builder::secret::Secret<T>::LEAF: bool
+pub const coqui_builder::secret::Secret<T>::OPTIONAL: bool
+pub fn coqui_builder::secret::Secret<T>::description() -> coqui_builder::describe::Description
+impl<T: coqui_builder::Leaf + zeroize::Zeroize> coqui_builder::inspect::Inspect for coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::at(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::datum::Datum>
+pub fn coqui_builder::secret::Secret<T>::entries(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::inspect::Entries>
+impl<T: zeroize::Zeroize + core::clone::Clone> core::clone::Clone for coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::clone(&self) -> coqui_builder::secret::Secret<T>
+impl<T: zeroize::Zeroize + core::cmp::Eq> core::cmp::Eq for coqui_builder::secret::Secret<T>
+impl<T: zeroize::Zeroize + core::cmp::PartialEq> core::cmp::PartialEq for coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::eq(&self, &coqui_builder::secret::Secret<T>) -> bool
+impl<T: zeroize::Zeroize> core::convert::From<T> for coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::from(T) -> coqui_builder::secret::Secret<T>
+impl<T: zeroize::Zeroize> core::fmt::Debug for coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<T: zeroize::Zeroize> core::ops::drop::Drop for coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::drop(&mut self)
+pub struct coqui_builder::secret::SecretCodec<T>(_)
+impl<T: coqui_builder::Leaf + zeroize::Zeroize> coqui_builder::describe::Codec<coqui_builder::secret::Secret<T>> for coqui_builder::secret::SecretCodec<T>
+pub const coqui_builder::secret::SecretCodec<T>::ORDERED: bool
+pub const coqui_builder::secret::SecretCodec<T>::SENSITIVE: bool
+pub const coqui_builder::secret::SecretCodec<T>::TYPE: &'static str
+pub fn coqui_builder::secret::SecretCodec<T>::choices() -> core::option::Option<&'static [&'static str]>
+pub fn coqui_builder::secret::SecretCodec<T>::from_text(&str) -> core::result::Result<coqui_builder::secret::Secret<T>, coqui_builder::describe::LeafError>
+pub fn coqui_builder::secret::SecretCodec<T>::labels() -> &'static [(&'static str, &'static str)]
+pub fn coqui_builder::secret::SecretCodec<T>::order(&coqui_builder::secret::Secret<T>, &coqui_builder::secret::Secret<T>) -> core::option::Option<core::cmp::Ordering>
+pub fn coqui_builder::secret::SecretCodec<T>::same(&coqui_builder::secret::Secret<T>, &coqui_builder::secret::Secret<T>) -> bool
+pub fn coqui_builder::secret::SecretCodec<T>::to_text(&coqui_builder::secret::Secret<T>) -> alloc::string::String
+impl<T> core::fmt::Debug for coqui_builder::secret::SecretCodec<T>
+pub fn coqui_builder::secret::SecretCodec<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub mod coqui_builder::source
 #[non_exhaustive] pub enum coqui_builder::source::Entries
 pub coqui_builder::source::Entries::Keys(alloc::vec::Vec<alloc::string::String>)
@@ -1168,6 +1240,8 @@ impl core::fmt::Debug for coqui_builder::datum::Datum
 pub fn coqui_builder::datum::Datum::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::fmt::Display for coqui_builder::datum::Datum
 pub fn coqui_builder::datum::Datum::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::ops::drop::Drop for coqui_builder::datum::Datum
+pub fn coqui_builder::datum::Datum::drop(&mut self)
 pub struct coqui_builder::Description
 impl coqui_builder::describe::Description
 pub fn coqui_builder::describe::Description::check_items(&self, usize) -> core::result::Result<(), coqui_builder::describe::Bound>
@@ -1201,6 +1275,8 @@ pub fn coqui_builder::env::Env::unknown(&mut self, &dyn core::ops::function::Fn(
 pub fn coqui_builder::env::Env::value(&mut self, &coqui_builder::path::KeyPath, &coqui_builder::describe::LeafInfo) -> core::result::Result<core::option::Option<alloc::string::String>, coqui_builder::source::SourceError>
 impl core::fmt::Debug for coqui_builder::env::Env
 pub fn coqui_builder::env::Env::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::ops::drop::Drop for coqui_builder::env::Env
+pub fn coqui_builder::env::Env::drop(&mut self)
 pub struct coqui_builder::FillError
 impl coqui_builder::fill::FillError
 pub fn coqui_builder::fill::FillError::at(&self) -> &coqui_builder::path::KeyPath
@@ -1341,6 +1417,39 @@ pub fn coqui_builder::report::Report::len(&self) -> usize
 pub fn coqui_builder::report::Report::new(&coqui_builder::describe::Description) -> coqui_builder::report::Report
 pub fn coqui_builder::report::Report::push(&mut self, coqui_builder::report::Finding)
 pub fn coqui_builder::report::Report::unmet(&self) -> impl core::iter::traits::iterator::Iterator<Item = &coqui_builder::report::Finding>
+pub struct coqui_builder::Secret<T: zeroize::Zeroize>
+impl<T: zeroize::Zeroize> coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::expose(&self) -> &T
+pub fn coqui_builder::secret::Secret<T>::new(T) -> coqui_builder::secret::Secret<T>
+impl<T: coqui_builder::Leaf + zeroize::Zeroize> coqui_builder::describe::Codec<coqui_builder::secret::Secret<T>> for coqui_builder::secret::SecretCodec<T>
+pub const coqui_builder::secret::SecretCodec<T>::ORDERED: bool
+pub const coqui_builder::secret::SecretCodec<T>::SENSITIVE: bool
+pub const coqui_builder::secret::SecretCodec<T>::TYPE: &'static str
+pub fn coqui_builder::secret::SecretCodec<T>::choices() -> core::option::Option<&'static [&'static str]>
+pub fn coqui_builder::secret::SecretCodec<T>::from_text(&str) -> core::result::Result<coqui_builder::secret::Secret<T>, coqui_builder::describe::LeafError>
+pub fn coqui_builder::secret::SecretCodec<T>::labels() -> &'static [(&'static str, &'static str)]
+pub fn coqui_builder::secret::SecretCodec<T>::order(&coqui_builder::secret::Secret<T>, &coqui_builder::secret::Secret<T>) -> core::option::Option<core::cmp::Ordering>
+pub fn coqui_builder::secret::SecretCodec<T>::same(&coqui_builder::secret::Secret<T>, &coqui_builder::secret::Secret<T>) -> bool
+pub fn coqui_builder::secret::SecretCodec<T>::to_text(&coqui_builder::secret::Secret<T>) -> alloc::string::String
+impl<T: coqui_builder::Leaf + zeroize::Zeroize> coqui_builder::describe::Describe for coqui_builder::secret::Secret<T>
+pub type coqui_builder::secret::Secret<T>::Fill = coqui_builder::fill::LeafSlot<coqui_builder::secret::Secret<T>, coqui_builder::secret::SecretCodec<T>>
+pub const coqui_builder::secret::Secret<T>::LEAF: bool
+pub const coqui_builder::secret::Secret<T>::OPTIONAL: bool
+pub fn coqui_builder::secret::Secret<T>::description() -> coqui_builder::describe::Description
+impl<T: coqui_builder::Leaf + zeroize::Zeroize> coqui_builder::inspect::Inspect for coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::at(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::datum::Datum>
+pub fn coqui_builder::secret::Secret<T>::entries(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::inspect::Entries>
+impl<T: zeroize::Zeroize + core::clone::Clone> core::clone::Clone for coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::clone(&self) -> coqui_builder::secret::Secret<T>
+impl<T: zeroize::Zeroize + core::cmp::Eq> core::cmp::Eq for coqui_builder::secret::Secret<T>
+impl<T: zeroize::Zeroize + core::cmp::PartialEq> core::cmp::PartialEq for coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::eq(&self, &coqui_builder::secret::Secret<T>) -> bool
+impl<T: zeroize::Zeroize> core::convert::From<T> for coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::from(T) -> coqui_builder::secret::Secret<T>
+impl<T: zeroize::Zeroize> core::fmt::Debug for coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<T: zeroize::Zeroize> core::ops::drop::Drop for coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::drop(&mut self)
 pub struct coqui_builder::SourceError
 impl coqui_builder::source::SourceError
 pub fn coqui_builder::source::SourceError::new(impl core::convert::Into<alloc::string::String>) -> coqui_builder::source::SourceError
@@ -1390,6 +1499,11 @@ pub type coqui_builder::profile::Profile::Fill = coqui_builder::profile::Profile
 pub const coqui_builder::profile::Profile::LEAF: bool
 pub const coqui_builder::profile::Profile::OPTIONAL: bool
 pub fn coqui_builder::profile::Profile::description() -> coqui_builder::describe::Description
+impl<T: coqui_builder::Leaf + zeroize::Zeroize> coqui_builder::describe::Describe for coqui_builder::secret::Secret<T>
+pub type coqui_builder::secret::Secret<T>::Fill = coqui_builder::fill::LeafSlot<coqui_builder::secret::Secret<T>, coqui_builder::secret::SecretCodec<T>>
+pub const coqui_builder::secret::Secret<T>::LEAF: bool
+pub const coqui_builder::secret::Secret<T>::OPTIONAL: bool
+pub fn coqui_builder::secret::Secret<T>::description() -> coqui_builder::describe::Description
 impl<T: coqui_builder::Leaf> coqui_builder::describe::Describe for T
 pub type T::Fill = coqui_builder::fill::LeafSlot<T>
 pub const T::LEAF: bool
@@ -1507,6 +1621,9 @@ pub fn coqui_builder::fill::ListSlot<T, F>::entries(&self, &[coqui_builder::path
 impl<T, F: coqui_builder::inspect::Inspect> coqui_builder::inspect::Inspect for coqui_builder::fill::OptionSlot<T, F>
 pub fn coqui_builder::fill::OptionSlot<T, F>::at(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::datum::Datum>
 pub fn coqui_builder::fill::OptionSlot<T, F>::entries(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::inspect::Entries>
+impl<T: coqui_builder::Leaf + zeroize::Zeroize> coqui_builder::inspect::Inspect for coqui_builder::secret::Secret<T>
+pub fn coqui_builder::secret::Secret<T>::at(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::datum::Datum>
+pub fn coqui_builder::secret::Secret<T>::entries(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::inspect::Entries>
 impl<T: coqui_builder::Leaf> coqui_builder::inspect::Inspect for T
 pub fn T::at(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::datum::Datum>
 pub fn T::entries(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::inspect::Entries>

@@ -35,6 +35,7 @@ workspace = true
 
 [dependencies]
 coqui-builder-derive = { version = "=0.0.0-alpha.0", path = "crates/coqui-builder-derive", optional = true }
+zeroize = { version = "1.9.1", optional = true, default-features = false, features = ["alloc"] }
 
 [dev-dependencies]
 # Reads the shared vectors; never reached by a normal build.
@@ -42,11 +43,12 @@ serde_json = "1"
 
 [features]
 # `std` adds the items that need an operating system or its collections: `PathBuf`, `HashMap`
-# and the `Env` source. Nothing else is on by default, and no feature has a dependency but
-# `derive`.
+# and the `Env` source. Nothing else is on by default. `derive`, `zeroize` and `serde` each
+# pull in only their own crates.
 default = ["std"]
 std = []
 derive = ["dep:coqui-builder-derive"]
+zeroize = ["dep:zeroize"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -119,3 +121,7 @@ required-features = ["derive", "std"]
 [[test]]
 name = "configured"
 required-features = ["derive"]
+
+[[test]]
+name = "secret"
+required-features = ["zeroize", "derive"]

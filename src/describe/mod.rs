@@ -75,7 +75,9 @@ impl Description {
 
     /// A leaf of type `T` converted by `C`.
     pub fn leaf_of<T, C: Codec<T>>() -> Description {
-        Description::new(Kind::Leaf(LeafInfo::of_codec::<T, C>()))
+        let mut description = Description::new(Kind::Leaf(LeafInfo::of_codec::<T, C>()));
+        description.notes.sensitive = C::SENSITIVE;
+        description
     }
 
     /// A list of `item`.

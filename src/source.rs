@@ -107,7 +107,7 @@ impl<T: Describe> Partial<T> {
     pub fn fill_from(&mut self, source: &mut impl Source) -> Result<Unknown, FillError> {
         let description = self.description.clone();
         let mut path = KeyPath::root();
-        fill_place(self, source, &description, &mut path)?;
+        fill_place(self, source, &description, &mut path, false)?;
         let unknown = source.unknown(&|key| description.knows(key.segments()));
         let (refused, kept): (Vec<_>, Vec<_>) = unknown
             .into_iter()
@@ -187,17 +187,56 @@ fn refuses(description: &Description, at: &[Segment]) -> bool {
     false
 }
 
+/// A text a source handed over, wiped when it drops if it belongs to a sensitive place.
+struct Held {
+    text: String,
+    secret: bool,
+}
+
+impl Drop for Held {
+    fn drop(&mut self) {
+        if self.secret {
+            wipe(&mut self.text);
+        }
+    }
+}
+
+/// The texts of a list, held the same way.
+struct HeldAll {
+    texts: Vec<String>,
+    secret: bool,
+}
+
+impl Drop for HeldAll {
+    fn drop(&mut self) {
+        if self.secret {
+            self.texts.iter_mut().for_each(wipe);
+        }
+    }
+}
+
+#[cfg(feature = "zeroize")]
+fn wipe(text: &mut String) {
+    zeroize::Zeroize::zeroize(text);
+}
+
+#[cfg(not(feature = "zeroize"))]
+fn wipe(_text: &mut String) {}
+
+/// `secret` is whether a place above this one is sensitive: everything below it is too.
 fn fill_place<T: Describe>(
     partial: &mut Partial<T>,
     source: &mut impl Source,
     description: &Description,
     path: &mut KeyPath,
+    secret: bool,
 ) -> Result<(), FillError> {
+    let secret = secret || description.notes().sensitive;
     match description.kind() {
         Kind::Group(group) => {
             for field in &group.fields {
                 path.push(Segment::Key(field.key.clone()));
-                fill_place(partial, source, &field.description, path)?;
+                fill_place(partial, source, &field.description, path, secret)?;
                 path.pop();
             }
         }
@@ -206,7 +245,8 @@ fn fill_place<T: Describe>(
             if let Kind::Leaf(info) = variant.tag_description().kind()
                 && let Some(text) = source.value(&tag, info)?
             {
-                partial.set_at(tag.segments(), &text)?;
+                let held = Held { text, secret };
+                partial.set_at(tag.segments(), &held.text)?;
             }
             let chosen = crate::inspect::Inspect::at(partial, tag.segments());
             if let Some(chosen) = chosen
@@ -214,7 +254,7 @@ fn fill_place<T: Describe>(
             {
                 for field in &arm.fields {
                     path.push(Segment::Key(field.key.clone()));
-                    fill_place(partial, source, &field.description, path)?;
+                    fill_place(partial, source, &field.description, path, secret)?;
                     path.pop();
                 }
             }
@@ -224,14 +264,20 @@ fn fill_place<T: Describe>(
             if let Some(count) = count {
                 partial.clear_at(path.segments())?;
                 if let Kind::Leaf(info) = item.kind() {
-                    let mut texts = Vec::with_capacity(count.min(1024));
+                    let mut held = HeldAll {
+                        texts: Vec::with_capacity(count.min(1024)),
+                        secret: secret || item.notes().sensitive,
+                    };
                     let mut gap = None;
                     for index in 0..count {
                         path.push(Segment::Index(index));
                         let found = source.value(path, info)?;
                         match found {
-                            Some(text) if gap.is_none() => texts.push(text),
-                            Some(_) => {
+                            Some(text) if gap.is_none() => held.texts.push(text),
+                            Some(mut text) => {
+                                if held.secret {
+                                    wipe(&mut text);
+                                }
                                 return Err(SourceError::new(format!(
                                     "the list holds {path} but not {}",
                                     gap.unwrap_or_default()
@@ -246,12 +292,12 @@ fn fill_place<T: Describe>(
                         }
                         path.pop();
                     }
-                    partial.set_items_at(path.segments(), &texts)?;
+                    partial.set_items_at(path.segments(), &held.texts)?;
                 } else {
                     partial.set_items_at(path.segments(), &[])?;
                     for index in 0..count {
                         path.push(Segment::Index(index));
-                        fill_place(partial, source, item, path)?;
+                        fill_place(partial, source, item, path, secret)?;
                         path.pop();
                     }
                 }
@@ -262,7 +308,7 @@ fn fill_place<T: Describe>(
                 partial.set_items_at(path.segments(), &[])?;
                 for key in keys {
                     path.push(Segment::Key(key));
-                    fill_place(partial, source, value, path)?;
+                    fill_place(partial, source, value, path, secret)?;
                     path.pop();
                 }
             }
@@ -273,7 +319,8 @@ fn fill_place<T: Describe>(
         },
         Kind::Leaf(info) => {
             if let Some(text) = source.value(path, info)? {
-                partial.set_at(path.segments(), &text)?;
+                let held = Held { text, secret };
+                partial.set_at(path.segments(), &held.text)?;
             }
         }
         Kind::Union(union) => {
@@ -286,19 +333,23 @@ fn fill_place<T: Describe>(
                 Err(error) => return Err(error.into()),
             };
             match (text, table) {
-                (Some(_), true) => {
+                (Some(text), true) => {
+                    drop(Held { text, secret });
                     return Err(SourceError::new(format!(
                         "{path} is given both as a value and as keys below it"
                     ))
                     .into());
                 }
-                (Some(text), false) => partial.set_at(path.segments(), &text)?,
+                (Some(text), false) => {
+                    let held = Held { text, secret };
+                    partial.set_at(path.segments(), &held.text)?;
+                }
                 (None, table) => {
                     if table {
                         // An empty table still chooses the structured arm.
                         partial.set_items_at(path.segments(), &[])?;
                     }
-                    fill_place(partial, source, union.structured(), path)?;
+                    fill_place(partial, source, union.structured(), path, secret)?;
                 }
             }
         }

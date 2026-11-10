@@ -36,6 +36,17 @@ impl core::fmt::Debug for Env {
     }
 }
 
+/// With `zeroize`, the values are wiped when the `Env` drops. The process environment itself
+/// is not touched.
+#[cfg(feature = "zeroize")]
+impl Drop for Env {
+    fn drop(&mut self) {
+        for (_, value) in &mut self.vars {
+            zeroize::Zeroize::zeroize(value);
+        }
+    }
+}
+
 impl Env {
     /// The variables of this process whose name starts with `prefix` and an underscore.
     ///

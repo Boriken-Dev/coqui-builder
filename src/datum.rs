@@ -57,6 +57,16 @@ impl Datum {
     }
 }
 
+/// With `zeroize`, the text of a sensitive datum is wiped when it drops.
+#[cfg(feature = "zeroize")]
+impl Drop for Datum {
+    fn drop(&mut self) {
+        if self.sensitive {
+            zeroize::Zeroize::zeroize(&mut self.text);
+        }
+    }
+}
+
 impl fmt::Display for Datum {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.sensitive {

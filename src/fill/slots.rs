@@ -66,9 +66,14 @@ impl<T, C: Codec<T>> Inspect for LeafSlot<T, C> {
         if !at.is_empty() {
             return None;
         }
-        self.value
-            .as_ref()
-            .map(|v| Datum::new(C::TYPE, C::to_text(v)))
+        self.value.as_ref().map(|v| {
+            let datum = Datum::new(C::TYPE, C::to_text(v));
+            if C::SENSITIVE {
+                datum.sensitive()
+            } else {
+                datum
+            }
+        })
     }
 
     fn entries(&self, _at: &[Segment]) -> Option<Entries> {
