@@ -26,9 +26,70 @@ extern crate std;
 extern crate self as coqui_builder;
 
 pub mod datum;
+pub mod describe;
+pub mod fill;
+pub mod inspect;
+pub mod partial;
 pub mod path;
 
 pub use datum::{Datum, Shown};
+pub use describe::{Describe, Description, Leaf};
+pub use fill::{Fill, FillError};
+pub use inspect::{Entries, Inspect};
+pub use partial::{Missing, Partial};
 pub use path::{KeyPath, PathError, Segment};
 
 /// What generated code names; not part of the API.
+#[doc(hidden)]
+pub mod __private {
+    pub use alloc::boxed::Box;
+    pub use alloc::format;
+    pub use alloc::string::{String, ToString};
+    pub use alloc::vec;
+    pub use alloc::vec::Vec;
+
+    use crate::datum::Datum;
+    use crate::describe::Codec;
+    use crate::inspect::Entries;
+    use crate::path::Segment;
+
+    /// A converted value, read at `rest`.
+    pub fn at_one<T, C: Codec<T>>(value: &T, rest: &[Segment]) -> Option<Datum> {
+        rest.is_empty()
+            .then(|| Datum::new(C::TYPE, C::to_text(value)))
+    }
+
+    /// A converted `Option`, read at `rest`.
+    pub fn at_opt<T, C: Codec<T>>(value: &Option<T>, rest: &[Segment]) -> Option<Datum> {
+        at_one::<T, C>(value.as_ref()?, rest)
+    }
+
+    /// An item of a list of converted items, read at `rest`.
+    pub fn at_list<T, C: Codec<T>>(value: &[T], rest: &[Segment]) -> Option<Datum> {
+        let (first, tail) = rest.split_first()?;
+        at_one::<T, C>(value.get(first.as_index()?)?, tail)
+    }
+
+    /// An item of an `Option` of a list of converted items, read at `rest`.
+    pub fn at_opt_list<T, C: Codec<T>>(value: &Option<Vec<T>>, rest: &[Segment]) -> Option<Datum> {
+        at_list::<T, C>(value.as_ref()?, rest)
+    }
+
+    /// The length of a list of converted items, asked at `rest`.
+    pub fn entries_list<T>(value: &[T], rest: &[Segment]) -> Option<Entries> {
+        rest.is_empty().then_some(Entries::Len(value.len()))
+    }
+
+    /// The length of an `Option` of a list, asked at `rest`.
+    pub fn entries_opt_list<T>(value: &Option<Vec<T>>, rest: &[Segment]) -> Option<Entries> {
+        entries_list(value.as_ref()?, rest)
+    }
+}
+
+/// Marks a struct of named fields: a type that `#[map(flatten)]` can take the fields of.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` has no named fields to flatten",
+    label = "only a struct with named fields can be flattened",
+    note = "derive `Describe` on a struct of named fields, or drop `#[map(flatten)]`"
+)]
+pub trait Fields: Describe {}
