@@ -203,7 +203,9 @@ fn the_reserved_setter_names_are_the_ones_every_builder_has() {
             "new",
             "configured",
             "non_defaults",
-            "partial_mut"
+            "partial_mut",
+            "into",
+            "try_into"
         ]
     );
 }
@@ -280,4 +282,116 @@ fn an_untagged_enum_also_asserts_no_option_arm_and_at_least_one_text_arm() {
             "{message}: {held}"
         );
     }
+}
+
+/// The tokens `#[derive(Builder)]` gives for `item`, with whitespace and line continuations
+/// dropped.
+fn builder_text(item: &str) -> String {
+    let tokens: TokenStream = item.parse().expect("tokens");
+    squeezed(&crate::builder::expand(tokens).to_string())
+}
+
+#[test]
+fn a_parts_struct_is_refused_with_a_sentence() {
+    let settings = "struct P { settings: S, #[builder(input)] id: u8 }";
+    let refused = |item: &str, stem: &str| {
+        let text = builder_text(item);
+        assert!(text.contains("compile_error"), "{item}: accepted");
+        assert!(
+            text.contains(&squeezed(stem)),
+            "{item}: expected {stem:?}, got {text}"
+        );
+    };
+    refused(
+        "#[builder(build = X)] struct P { settings: S, other: S }",
+        "has one settings field, and this is a second",
+    );
+    refused(
+        "#[builder(build = X)] struct P { #[builder(input)] id: u8 }",
+        "has one settings field, and this has none",
+    );
+    refused(settings, "needs `#[builder(build = X)]`");
+    refused(
+        &format!("#[builder(build = X, title = \"Y\")] {settings}"),
+        "unrecognised `#[builder(...)]` option on a parts struct",
+    );
+    refused(
+        "#[builder(build = X)] struct P { settings: S, #[builder(input, output)] id: u8 }",
+        "unrecognised `#[builder(...)]` option on a field of a parts struct",
+    );
+    refused(
+        &format!("#[builder(build = Built<u8>)] {settings}"),
+        "Name the builder with `name",
+    );
+    refused(
+        &format!("#[builder(build = X, name = \"not a name\")] {settings}"),
+        "`name` is the builder's type name",
+    );
+    refused(
+        "#[builder(build = X)] struct P { settings: S, #[builder(input)] build: u8 }",
+        "is a method every builder has",
+    );
+    refused(
+        "#[builder(build = X)] struct P { settings: S, #[builder(input)] id: u8, \
+         #[builder(input, setter = \"id\")] other: u8 }",
+        "both have the setter `id`",
+    );
+    refused(
+        "#[builder(build = X)] struct P<'a> { settings: S, #[builder(input)] id: &'a u8 }",
+        "needs `entry = \"new\"`",
+    );
+    refused(
+        &format!("#[builder(build = X, entry = \"make\")] {settings}"),
+        "`entry` is \"new\"",
+    );
+    refused(
+        "#[builder(build = X)] struct P(S);",
+        "needs a parts struct with named fields",
+    );
+    refused(
+        "#[builder(build = X)] enum P { A }",
+        "is for a parts struct",
+    );
+    refused(
+        "#[builder(build = X)] struct P { #[builder(setter = \"s\")] settings: S }",
+        "renames the method of an input",
+    );
+    for ok in [
+        &format!("#[builder(build = X)] {settings}"),
+        &format!("#[builder(build = path::X, fallible, crate = my::cb)] {settings}"),
+        &format!(
+            "#[builder(build = Built<u8>, name = \"ServerBuilder\", entry = \"new\")] {settings}"
+        ),
+        "#[builder(build = X, entry = \"new\")] struct P<'a> { settings: S, \
+         #[builder(input)] id: &'a u8, #[builder(input)] label: Option<String> }",
+    ] {
+        assert!(!builder_text(ok).contains("compile_error"), "{ok}");
+    }
+}
+
+#[test]
+fn a_settings_type_refuses_input() {
+    let refused = expand_text("struct S { #[builder(input)] id: u8 }")
+        .unwrap_err()
+        .to_string();
+    assert!(
+        refused.contains("`input` belongs to a parts struct"),
+        "{refused}"
+    );
+}
+
+#[test]
+fn a_setter_name_no_method_can_have_is_an_error_not_a_panic() {
+    for name in ["self", "max-size", "1x", "Self", "crate", "a b"] {
+        let item = format!("struct S {{ #[builder(setter = \"{name}\")] a: u8 }}");
+        let refused = expand_text(&item).unwrap_err().to_string();
+        assert!(refused.contains("cannot be a setter"), "{name}: {refused}");
+        let parts = format!(
+            "#[builder(build = X)] struct P {{ settings: S, #[builder(input, setter = \"{name}\")] a: u8 }}"
+        );
+        let text = builder_text(&parts);
+        assert!(text.contains("cannotbeasetter"), "{name}: {text}");
+    }
+    // A keyword is a method by its raw name.
+    assert!(expand_text("struct S { #[builder(setter = \"type\")] a: u8 }").is_ok());
 }

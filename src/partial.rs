@@ -18,32 +18,60 @@ use crate::fill::{Fill, FillError, FillErrorKind};
 use crate::inspect::{Entries, Inspect};
 use crate::path::{KeyPath, Segment};
 
-/// Every key that is required and was not set.
+/// Every key that is required and was not set, and every input a builder takes that was not
+/// given.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Missing {
     keys: Vec<KeyPath>,
+    inputs: Vec<&'static str>,
 }
 
 impl Missing {
-    /// A report of `keys`.
-    pub fn new(keys: Vec<KeyPath>) -> Missing {
-        Missing { keys }
+    /// A report of `keys` and `inputs`.
+    pub fn new(keys: Vec<KeyPath>, inputs: Vec<&'static str>) -> Missing {
+        Missing { keys, inputs }
     }
 
     /// The keys, in the order the type declares them.
     pub fn keys(&self) -> &[KeyPath] {
         &self.keys
     }
+
+    /// The names of the inputs, in the order the parts struct declares them.
+    pub fn inputs(&self) -> &[&'static str] {
+        &self.inputs
+    }
+
+    /// Whether nothing is missing.
+    pub fn is_empty(&self) -> bool {
+        self.keys.is_empty() && self.inputs.is_empty()
+    }
 }
 
+/// `missing settings: a, b.c; missing inputs: identity`: a part with nothing omitted is left
+/// out. Only names are written, never a value.
 impl fmt::Display for Missing {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("missing settings: ")?;
-        for (at, key) in self.keys.iter().enumerate() {
-            if at > 0 {
-                f.write_str(", ")?;
+        if !self.keys.is_empty() || self.inputs.is_empty() {
+            f.write_str("missing settings: ")?;
+            for (at, key) in self.keys.iter().enumerate() {
+                if at > 0 {
+                    f.write_str(", ")?;
+                }
+                write!(f, "{key}")?;
             }
-            write!(f, "{key}")?;
+        }
+        if !self.inputs.is_empty() {
+            if !self.keys.is_empty() {
+                f.write_str("; ")?;
+            }
+            f.write_str("missing inputs: ")?;
+            for (at, input) in self.inputs.iter().enumerate() {
+                if at > 0 {
+                    f.write_str(", ")?;
+                }
+                f.write_str(input)?;
+            }
         }
         Ok(())
     }
@@ -218,7 +246,10 @@ impl<T: Describe> Partial<T> {
         let built = self.fill.build(&KeyPath::root(), &mut missing);
         match built {
             Some(value) if missing.is_empty() => Ok(value),
-            _ => Err(Missing { keys: missing }),
+            _ => Err(Missing {
+                keys: missing,
+                inputs: Vec::new(),
+            }),
         }
     }
 }

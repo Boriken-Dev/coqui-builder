@@ -1,7 +1,15 @@
 pub mod coqui_builder
+pub use coqui_builder::Builder
 pub use coqui_builder::Describe
 pub use coqui_builder::Leaf
 pub mod coqui_builder::builder
+#[non_exhaustive] pub enum coqui_builder::builder::BuildError<E>
+pub coqui_builder::builder::BuildError::Failed(E)
+pub coqui_builder::builder::BuildError::Missing(coqui_builder::partial::Missing)
+impl<E: core::error::Error + 'static> core::error::Error for coqui_builder::builder::BuildError<E>
+pub fn coqui_builder::builder::BuildError<E>::source(&self) -> core::option::Option<&(dyn core::error::Error + 'static)>
+impl<E: core::fmt::Display> core::fmt::Display for coqui_builder::builder::BuildError<E>
+pub fn coqui_builder::builder::BuildError<E>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub trait coqui_builder::builder::Holds<S: coqui_builder::describe::Describe>
 pub fn coqui_builder::builder::Holds::partial_mut(&mut self) -> &mut coqui_builder::partial::Partial<S>
 pub mod coqui_builder::check
@@ -765,8 +773,10 @@ pub fn coqui_builder::non_default::non_defaults<T: coqui_builder::describe::Desc
 pub mod coqui_builder::partial
 pub struct coqui_builder::partial::Missing
 impl coqui_builder::partial::Missing
+pub fn coqui_builder::partial::Missing::inputs(&self) -> &[&'static str]
+pub fn coqui_builder::partial::Missing::is_empty(&self) -> bool
 pub fn coqui_builder::partial::Missing::keys(&self) -> &[coqui_builder::path::KeyPath]
-pub fn coqui_builder::partial::Missing::new(alloc::vec::Vec<coqui_builder::path::KeyPath>) -> coqui_builder::partial::Missing
+pub fn coqui_builder::partial::Missing::new(alloc::vec::Vec<coqui_builder::path::KeyPath>, alloc::vec::Vec<&'static str>) -> coqui_builder::partial::Missing
 impl core::error::Error for coqui_builder::partial::Missing
 impl core::fmt::Display for coqui_builder::partial::Missing
 pub fn coqui_builder::partial::Missing::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
@@ -1234,8 +1244,10 @@ pub type &'a coqui_builder::path::KeyPath::Item = &'a coqui_builder::path::Segme
 pub fn &'a coqui_builder::path::KeyPath::into_iter(self) -> Self::IntoIter
 pub struct coqui_builder::Missing
 impl coqui_builder::partial::Missing
+pub fn coqui_builder::partial::Missing::inputs(&self) -> &[&'static str]
+pub fn coqui_builder::partial::Missing::is_empty(&self) -> bool
 pub fn coqui_builder::partial::Missing::keys(&self) -> &[coqui_builder::path::KeyPath]
-pub fn coqui_builder::partial::Missing::new(alloc::vec::Vec<coqui_builder::path::KeyPath>) -> coqui_builder::partial::Missing
+pub fn coqui_builder::partial::Missing::new(alloc::vec::Vec<coqui_builder::path::KeyPath>, alloc::vec::Vec<&'static str>) -> coqui_builder::partial::Missing
 impl core::error::Error for coqui_builder::partial::Missing
 impl core::fmt::Display for coqui_builder::partial::Missing
 pub fn coqui_builder::partial::Missing::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result

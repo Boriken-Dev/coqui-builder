@@ -64,6 +64,8 @@ pub(crate) const RESERVED_SETTERS: &[&str] = &[
     "configured",
     "non_defaults",
     "partial_mut",
+    "into",
+    "try_into",
 ];
 
 /// `a`, `b` and `c` as they are named in a message.
@@ -310,7 +312,7 @@ impl FieldAttrs {
                         out.setter = Some(string(&meta)?);
                     } else if meta.path.is_ident("input") {
                         return Err(meta.error(
-                            "`input` belongs to a parts struct (`#[derive(Builder)]`): a                              settings type has settings only, and a value that is no text is                              an input of the parts struct that builds it",
+                            "`input` belongs to a parts struct (`#[derive(Builder)]`): a settings type has settings only, and a value that is no text is an input of the parts struct that builds it",
                         ));
                     } else {
                         return Err(meta.error(format!(
@@ -483,13 +485,14 @@ impl FieldAttrs {
             }
             out.default = Some(DefaultKind::Expr(expr));
         }
-        if let Some(setter) = &out.setter
-            && setter.is_empty()
-        {
-            return Err(syn::Error::new(
-                span_of(),
-                "`setter` names a method, not nothing",
-            ));
+        if let Some(setter) = &out.setter {
+            if setter.is_empty() {
+                return Err(syn::Error::new(
+                    span_of(),
+                    "`setter` names a method, not nothing",
+                ));
+            }
+            crate::setters::check_method_name(setter, span_of())?;
         }
         Ok(out)
     }

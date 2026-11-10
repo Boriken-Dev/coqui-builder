@@ -51,6 +51,7 @@
 #![forbid(unsafe_code)]
 
 mod attrs;
+mod builder;
 mod enums;
 mod fields;
 mod rename;
@@ -70,6 +71,17 @@ use crate::structs::Ctx;
 #[proc_macro_derive(Describe, attributes(map, schema, builder, leaf))]
 pub fn describe(input: TokenStream) -> TokenStream {
     expand(input.into()).into()
+}
+
+/// Writes a builder for a parts struct: one field holds the settings and every other field is
+/// a `#[builder(input)]`. See the crate documentation of `coqui-builder`.
+///
+/// `#[builder(build = X)]` names the type the parts build, by `From<Parts> for X`; with
+/// `fallible` by `TryFrom<Parts> for X`. The builder is `XBuilder`, made by `X::builder()`
+/// or, with `entry = "new"`, by `XBuilder::new()`.
+#[proc_macro_derive(Builder, attributes(builder))]
+pub fn builder(input: TokenStream) -> TokenStream {
+    builder::expand(input.into()).into()
 }
 
 /// Makes a type a `Leaf`, one setting that is one text: see the crate documentation of

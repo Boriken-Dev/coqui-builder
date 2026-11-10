@@ -44,7 +44,7 @@ pub mod source;
 pub use check::{Check, Checks};
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
-pub use coqui_builder_derive::{Describe, Leaf};
+pub use coqui_builder_derive::{Builder, Describe, Leaf};
 pub use datum::{Datum, Shown};
 pub use describe::{Describe, Description, Leaf};
 #[cfg(feature = "std")]
@@ -118,6 +118,99 @@ mod untagged_arms {
     /// #[derive(Describe)]
     /// #[map(untagged)]
     /// enum Either { Table(Table) }
+    /// ```
+    struct Rules;
+}
+
+/// A parts struct has one settings field, whose setters are the settings' own, and inputs
+/// that must not share a setter's name; both are checked when the builder is compiled.
+#[cfg(all(doctest, feature = "derive"))]
+mod builder_rules {
+    /// A setting has a setter, and so has an input.
+    ///
+    /// ```
+    /// use coqui_builder::{Builder, Describe};
+    /// #[derive(Describe)]
+    /// struct S { kept: bool }
+    /// struct X;
+    /// #[derive(Builder)]
+    /// #[builder(build = X)]
+    /// struct P { settings: S, #[builder(input)] identity: u8 }
+    /// impl From<P> for X { fn from(_: P) -> X { X } }
+    /// let _ = X::builder().kept(true).identity(1u8);
+    /// ```
+    ///
+    /// A field behind a false `cfg` is no setting, so it has no setter.
+    ///
+    /// ```compile_fail,E0599
+    /// use coqui_builder::{Builder, Describe};
+    /// #[derive(Describe)]
+    /// struct S {
+    ///     #[cfg(any())]
+    ///     gone: bool,
+    ///     kept: bool,
+    /// }
+    /// struct X;
+    /// #[derive(Builder)]
+    /// #[builder(build = X)]
+    /// struct P { settings: S }
+    /// impl From<P> for X { fn from(_: P) -> X { X } }
+    /// let _ = X::builder().gone(true);
+    /// ```
+    ///
+    /// A built type with generic arguments, or one this crate does not own, needs the
+    /// builder's name and the `new` entry, since `X::builder()` could not be written.
+    ///
+    /// ```
+    /// use coqui_builder::{Builder, Describe};
+    /// #[derive(Describe)]
+    /// struct S { kept: bool }
+    /// struct Built<T>(T);
+    /// #[derive(Builder)]
+    /// #[builder(build = Built<bool>, name = "ServerBuilder", entry = "new")]
+    /// struct P { settings: S }
+    /// impl From<P> for Built<bool> { fn from(p: P) -> Built<bool> { Built(p.settings.kept) } }
+    /// let _ = ServerBuilder::new().kept(true).build();
+    /// ```
+    ///
+    /// Without a name the builder has none to take.
+    ///
+    /// ```compile_fail
+    /// use coqui_builder::{Builder, Describe};
+    /// #[derive(Describe)]
+    /// struct S { kept: bool }
+    /// struct Built<T>(T);
+    /// #[derive(Builder)]
+    /// #[builder(build = Built<bool>, entry = "new")]
+    /// struct P { settings: S }
+    /// ```
+    ///
+    /// An input cannot take the name of a setting's setter: the later call would be
+    /// ambiguous, so the build of the builder fails.
+    ///
+    /// ```compile_fail,E0080
+    /// use coqui_builder::{Builder, Describe};
+    /// #[derive(Describe)]
+    /// struct S { kept: bool }
+    /// struct X;
+    /// #[derive(Builder)]
+    /// #[builder(build = X)]
+    /// struct P { settings: S, #[builder(input)] kept: u8 }
+    /// impl From<P> for X { fn from(_: P) -> X { X } }
+    /// ```
+    ///
+    /// The same holds when the parts struct has generic parameters.
+    ///
+    /// ```compile_fail,E0080
+    /// use coqui_builder::{Builder, Describe};
+    /// #[derive(Describe)]
+    /// struct S { kept: bool }
+    /// struct X;
+    /// #[derive(Builder)]
+    /// #[builder(build = X, entry = "new")]
+    /// struct P<'a> { settings: S, #[builder(input)] kept: &'a u8 }
+    /// impl From<P<'_>> for X { fn from(_: P<'_>) -> X { X } }
+    /// let _ = XBuilder::new();
     /// ```
     struct Rules;
 }
