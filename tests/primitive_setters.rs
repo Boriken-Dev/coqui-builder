@@ -103,7 +103,7 @@ fn an_option_setting_still_takes_the_inner_value_or_an_option() {
     assert_eq!((none.knobs.retries, none.spare), (None, None));
     let some = Rig::builder()
         .retries(8u32)
-        .spare(5u32)
+        .spare(5)
         .depth(1)
         .weight(0.0)
         .armed(false)

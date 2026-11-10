@@ -96,7 +96,8 @@ one method per setting: the trait method's name, docs, visibility and argument t
 `<Self as SSetters>::name(self, value)`. An inherent method wins at the call site, so a caller in the
 builder's crate needs no import; an impl on a builder of another crate is E0116, and that crate keeps the
 trait. Refused: no type, a non-type value, an enum, a newtype, a `#[map(transparent)]` struct, a settings
-type with generic parameters.
+type with generic parameters. Two impls of one setter name on a builder (the same target twice, an input
+setter named like a setting, a hand-written method) are rustc's E0592.
 
 Contracts:
 
@@ -150,7 +151,7 @@ struct `#[builder(build = X[, name = ".."][, fallible][, entry = "new"][, crate 
   `impl Into<T>`, an `Option<C>`, a `Vec<C>` and a `C::Item` included, and those still need the
   parameters named when nothing else fixes them. An input written as a primitive scalar takes it
   as itself too (the list is the settings setters').
-- An input of type `Option<J>` takes `impl Into<J>` and is never missing; any other input is
+- An input of type `Option<J>` takes `impl Into<J>` (`J` itself when `J` is a primitive scalar) and is never missing; any other input is
   named in `Missing::inputs` while unset.
 - An input setter that is one of `build`, `parts`, `fill`, `fill_from`, `builder`, `new`,
   `configured`, `non_defaults`, `partial_mut`, `into` or `try_into` is refused; one equal to a setter of the settings

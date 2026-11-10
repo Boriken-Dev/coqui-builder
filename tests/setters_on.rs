@@ -123,7 +123,7 @@ fn a_generic_builder_and_a_second_builder_share_one_settings_type() {
 }
 
 #[test]
-fn the_trait_is_still_written_for_a_builder_in_another_crate() {
+fn the_trait_stays_for_a_caller_that_imports_it() {
     use settings::SharedSetters;
 
     let plain = SharedSetters::port(Plain::builder(), 3).build().unwrap();

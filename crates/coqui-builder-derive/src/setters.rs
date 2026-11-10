@@ -163,6 +163,7 @@ pub(crate) fn write(
         });
         quote! {
             #[automatically_derived]
+            #[allow(dead_code, clippy::should_implement_trait)]
             impl #on_impl #ty where #(#predicates),* {
                 #(#methods)*
             }

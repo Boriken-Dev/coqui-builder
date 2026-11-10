@@ -7,12 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Fixed
-
-- A setter for a field written as a primitive scalar (`bool`, `char`, the integers, `f32`, `f64`), on the
-  settings and on a builder input, takes that type itself, so `.max(8)` infers. Every other type keeps
-  `impl Into<T>`. A call that passed another type through `Into` (a `u8` into a `u16` field) must convert it.
-
 ### Added
 
 - `#[builder(setters_on = XBuilder)]` on a settings struct (repeatable, `<'a, C: Tr> XBuilder<'a, C>` for a
@@ -102,6 +96,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- A setter for a field written as a primitive scalar (`bool`, `char`, the integers, `f32`, `f64`), on the
+  settings and on a builder input (an `Option<u32>` input takes the `u32`), takes that type itself, so
+  `.max(8)` infers. Every other type keeps `impl Into<T>`. A call that passed another type through `Into`
+  (a `u8` into a `u16` field) must convert it first.
 - An input whose type is exactly one of the parts struct's type parameters has a setter taking
   that type, not `impl Into<..>`, so setting it infers the parameter and needs no turbofish. Every
   other input still takes `impl Into<T>`, an `Option<C>` among them. A caller that named the

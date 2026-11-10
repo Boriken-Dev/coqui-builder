@@ -54,6 +54,8 @@
 //!   empty; `multiple_of` that is not above zero; `stricter` other than `"higher"` or
 //!   `"lower"`; an empty `setter`; a setter that is a name every builder has; `input`, which
 //!   is for a parts struct.
+//! - `#[builder(setters_on = ..)]`: no type, a value that is not a type, an enum, a tuple struct,
+//!   a transparent struct, or a settings type with generic parameters.
 
 #![forbid(unsafe_code)]
 

@@ -67,7 +67,8 @@ let report = profile.verify(&limits);
 
 A parts struct holds the settings type beside the inputs that are no text, and
 `#[derive(Builder)]` writes the builder. Import the settings' setters trait
-(`<Name>Setters`, from the crate that defines the settings) to call them.
+(`<Name>Setters`, from the crate that defines the settings) to call them; a builder in the
+same crate as its settings needs no import when the settings say `#[builder(setters_on = XBuilder)]`.
 
 ```rust
 #[derive(Builder)]

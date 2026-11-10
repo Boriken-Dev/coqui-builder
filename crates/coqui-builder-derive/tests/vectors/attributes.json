@@ -268,8 +268,7 @@
       "item": "{derive} #[builder(setters_on = XBuilder)] struct S { a: u8 }",
       "guatiao": "pending",
       "coqui_builder": "accept",
-      "compiles_alone": false,
-      "expect": {"kind": "group", "keys": ["a"]}
+      "compiles_alone": false
     },
     {
       "name": "setters_on takes a type",

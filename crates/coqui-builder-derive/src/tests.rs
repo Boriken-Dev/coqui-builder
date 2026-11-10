@@ -382,7 +382,7 @@ fn parts_is_refused_as_a_setter_for_a_setting_and_for_an_input() {
     assert!(input.contains("compile_error"), "{input}");
     assert!(input.contains("isamethodeverybuilderhas"), "{input}");
     let renamed = builder_text(
-        "#[builder(build = X)] struct P { settings: S,          #[builder(input, setter = \"parts_of\")] parts: u8 }",
+        "#[builder(build = X)] struct P { settings: S, #[builder(input, setter = \"parts_of\")] parts: u8 }",
     );
     assert!(!renamed.contains("compile_error"), "{renamed}");
     assert!(expand_text("struct S { #[builder(setter = \"parts_of\")] parts: u8 }").is_ok());
@@ -391,7 +391,7 @@ fn parts_is_refused_as_a_setter_for_a_setting_and_for_an_input() {
 #[test]
 fn only_an_input_that_is_exactly_a_type_parameter_takes_its_type_itself() {
     let text = builder_text(
-        "#[builder(build = X, entry = \"new\")] struct P<C, S> { settings: T,          #[builder(input)] channel: C, #[builder(input)] stream: Option<S>,          #[builder(input)] all: Vec<C>, #[builder(input)] name: String,          #[builder(input)] other: core::marker::PhantomData<C>,          #[builder(input)] item: C::Item, #[builder(input)] q: <C as Tr>::A,          #[builder(input)] p: (C) }",
+        "#[builder(build = X, entry = \"new\")] struct P<C, S> { settings: T, #[builder(input)] channel: C, #[builder(input)] stream: Option<S>, #[builder(input)] all: Vec<C>, #[builder(input)] name: String, #[builder(input)] other: core::marker::PhantomData<C>, #[builder(input)] item: C::Item, #[builder(input)] q: <C as Tr>::A, #[builder(input)] p: (C) }",
     );
     assert!(!text.contains("compile_error"), "{text}");
     assert!(text.contains("fnchannel(mutself,value:C)->Self"), "{text}");
@@ -485,21 +485,17 @@ fn a_setter_takes_a_primitive_scalar_as_itself_and_anything_else_through_into() 
 #[test]
 fn an_input_setter_takes_a_primitive_scalar_as_itself() {
     let text = builder_text(
-        "#[builder(build = X)] struct P { settings: T, #[builder(input)] n: u32, #[builder(input)] f: f32,          #[builder(input)] on: bool, #[builder(input)] some: Option<u32>, #[builder(input)] big: Alias,          #[builder(input)] text: String }",
+        "#[builder(build = X)] struct P { settings: T, #[builder(input)] n: u32, #[builder(input)] f: f32, #[builder(input)] on: bool, #[builder(input)] some: Option<u32>, #[builder(input)] big: Alias, #[builder(input)] text: String }",
     );
     assert!(!text.contains("compile_error"), "{text}");
-    for name in ["n:u32", "f:f32", "on:bool"] {
+    for name in ["n:u32", "f:f32", "on:bool", "some:u32"] {
         let (field, ty) = name.split_once(':').unwrap();
         assert!(
             text.contains(&format!("fn{field}(mutself,value:{ty})->Self")),
             "{field}: {text}"
         );
     }
-    for (name, into) in [
-        ("some", "Into<u32>"),
-        ("big", "Into<Alias>"),
-        ("text", "Into<String>"),
-    ] {
+    for (name, into) in [("big", "Into<Alias>"), ("text", "Into<String>")] {
         assert!(
             text.contains(&format!(
                 "fn{name}(mutself,value:impl::core::convert::{into})"
