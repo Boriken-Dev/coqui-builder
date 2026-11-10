@@ -86,3 +86,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `none = "never"`. The test `settings_shapes` holds settings types of the shapes the guide covers
   (lists, optional timeouts, units, groups, a flag or a table, byte strings, bounds), with
   builders over several of them.
+- `parts()` on a builder `#[derive(Builder)]` writes: the parts struct with its settings built,
+  its required inputs present and its optional inputs as given, or the same `Missing` that
+  `build` gives. `build` is `parts()` followed by the conversion, and a second terminal is written
+  over `parts()`. `parts` joins the names a setting or an input cannot take for its setter.
+
+### Changed
+
+- An input whose type is exactly one of the parts struct's type parameters has a setter taking
+  that type, not `impl Into<..>`, so setting it infers the parameter and needs no turbofish. Every
+  other input still takes `impl Into<T>`, an `Option<C>` among them. A caller that named the
+  parameter and passed a value converting into it now converts it first (`.name("x".into())`).

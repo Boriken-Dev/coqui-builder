@@ -194,9 +194,15 @@ impl TryFrom<ServerParts<'_>> for Built<ServerConfig> {
   the built type has generic arguments. A
   constructor argument becomes an input (`.identity(&id)`) or, when its type has a text form and
   it belongs in a file, a required key of the settings.
-- **Generic inputs are not inferred.** A setter takes `impl Into<C>`, so a parts struct
-  generic over `C` needs `ChannelBuilder::<Framing, Link>::new()`, or a small hand-written
-  function that names the types.
+- **Generic inputs are inferred.** An input whose type is exactly a type parameter of the
+  parts struct (`channel: C`) has a setter taking `C` itself, so
+  `ChannelBuilder::new().port(1).channel(Framing)` needs no turbofish. Any other input takes
+  `impl Into<T>`, an `Option<C>` among them (name the parameters when nothing else fixes them). A
+  caller that named the parameter and passed a value converting into it now converts it first.
+- **A second terminal.** `parts()` gives the parts struct with the settings built, or the same
+  `Missing` that `build` gives, and `build` is `parts()` followed by the conversion. A
+  `build_async()` or a `configs()` that gives two values is a method written over it. A builder is
+  not `Clone`.
 - **Layers.** `settings(s)` becomes `fill(Partial::from(s))`; a file, the environment and flags
   are `fill(partial)` and `fill_from(&mut source)`; the last write of a key wins, whichever way it
   was written, setters included.
