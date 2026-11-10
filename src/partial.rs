@@ -203,6 +203,15 @@ fn overlay_walk<T: Describe>(
     description: &Description,
     path: &mut Vec<Segment>,
 ) {
+    // An explicit `None` forgets what the target holds; one with a text is laid over as that
+    // text, below. A list position is left alone: clearing it would shift its neighbours.
+    if !matches!(path.last(), Some(Segment::Index(_)))
+        && later.fill.holds_none(path)
+        && later.fill.at(path).is_none()
+    {
+        let _ = target.fill.clear(path);
+        return;
+    }
     match description.kind() {
         Kind::Group(group) => {
             for field in &group.fields {

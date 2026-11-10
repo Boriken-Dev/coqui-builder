@@ -60,6 +60,13 @@ pub trait Fill<T>: Default + Inspect {
 
     /// A fill with every key set from `value`.
     fn from_value(value: T) -> Self;
+
+    /// Whether the place at `at` holds an explicit `None`.
+    #[doc(hidden)]
+    fn holds_none(&self, at: &[Segment]) -> bool {
+        let _ = at;
+        false
+    }
 }
 
 /// Why a key could not be filled.

@@ -261,6 +261,17 @@ impl Fill<Expect> for ExpectFill {
         }
     }
 
+    fn holds_none(&self, at: &[Segment]) -> bool {
+        let Some((first, rest)) = at.split_first() else {
+            return false;
+        };
+        match &*first.name() {
+            "min" => Fill::<Option<String>>::holds_none(&self.min, rest),
+            "max" => Fill::<Option<String>>::holds_none(&self.max, rest),
+            _ => false,
+        }
+    }
+
     fn from_value(value: Expect) -> Self {
         let mut fill = ExpectFill {
             arm: Some(arm_of(&value)),
@@ -425,6 +436,10 @@ impl Fill<Profile> for ProfileFill {
             }
         }
         complete.then_some(profile)
+    }
+
+    fn holds_none(&self, at: &[Segment]) -> bool {
+        self.entries.holds_none(at)
     }
 
     fn from_value(value: Profile) -> Self {

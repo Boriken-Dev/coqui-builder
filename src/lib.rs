@@ -98,6 +98,26 @@ mod untagged_arms {
     /// #[map(untagged)]
     /// enum Outer { Flag(bool), Inner(Inner) }
     /// ```
+    ///
+    /// An arm holds a value, so it is not an `Option`: the field that holds the enum is.
+    ///
+    /// ```compile_fail,E0080
+    /// use coqui_builder::Describe;
+    /// #[derive(Describe)]
+    /// #[map(untagged)]
+    /// enum Either { Off, Flag(Option<bool>) }
+    /// ```
+    ///
+    /// An enum whose only arm is structured is that arm.
+    ///
+    /// ```compile_fail,E0080
+    /// use coqui_builder::Describe;
+    /// #[derive(Describe)]
+    /// struct Table { x: u8 }
+    /// #[derive(Describe)]
+    /// #[map(untagged)]
+    /// enum Either { Table(Table) }
+    /// ```
     struct Rules;
 }
 

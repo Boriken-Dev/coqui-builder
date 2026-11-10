@@ -242,6 +242,13 @@ impl<T, F: Fill<T>> Fill<Option<T>> for OptionSlot<T, F> {
         Some(None)
     }
 
+    fn holds_none(&self, at: &[Segment]) -> bool {
+        if self.explicit_none {
+            return at.is_empty();
+        }
+        self.touched && self.inner.holds_none(at)
+    }
+
     fn from_value(value: Option<T>) -> Self {
         match value {
             Some(inner) => OptionSlot {
@@ -430,6 +437,16 @@ impl<T, F: Fill<T>> Fill<Vec<T>> for ListSlot<T, F> {
         complete.then_some(built)
     }
 
+    fn holds_none(&self, at: &[Segment]) -> bool {
+        let Some((first, rest)) = at.split_first() else {
+            return false;
+        };
+        first
+            .as_index()
+            .and_then(|index| self.items.get(index))
+            .is_some_and(|item| item.holds_none(rest))
+    }
+
     fn from_value(value: Vec<T>) -> Self {
         ListSlot {
             items: value.into_iter().map(F::from_value).collect(),
@@ -614,6 +631,15 @@ impl<M: TextMap<V>, V, F: Fill<V>> Fill<M> for MapSlot<M, V, F> {
         complete.then(|| M::collect_entries(built))
     }
 
+    fn holds_none(&self, at: &[Segment]) -> bool {
+        let Some((first, rest)) = at.split_first() else {
+            return false;
+        };
+        self.entries
+            .get(first.name().as_ref())
+            .is_some_and(|entry| entry.holds_none(rest))
+    }
+
     fn from_value(value: M) -> Self {
         MapSlot {
             entries: value
@@ -710,6 +736,10 @@ impl<T: Wrap, F: Fill<T::Inner>> Fill<T> for Wrapped<T, F> {
 
     fn build(self, at: &KeyPath, missing: &mut Vec<KeyPath>) -> Option<T> {
         self.inner.build(at, missing).map(T::wrap)
+    }
+
+    fn holds_none(&self, at: &[Segment]) -> bool {
+        self.inner.holds_none(at)
     }
 
     fn from_value(value: T) -> Self {

@@ -264,3 +264,20 @@ fn an_untagged_arm_that_holds_the_enum_is_refused() {
         .to_string();
     assert!(refused.contains("holds itself"), "{refused}");
 }
+
+#[test]
+fn an_untagged_enum_also_asserts_no_option_arm_and_at_least_one_text_arm() {
+    let held = expand_text("#[map(untagged)] enum E { Off, A(A) }")
+        .expect("accepted: the arms are checked when the enum compiles")
+        .to_string();
+    for message in [
+        "an untagged enum's arm holds a value; make the field that holds the enum optional \
+         instead",
+        "an untagged enum with one arm is that arm: use a newtype",
+    ] {
+        assert!(
+            squeezed(&held).contains(&squeezed(message)),
+            "{message}: {held}"
+        );
+    }
+}

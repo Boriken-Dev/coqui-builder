@@ -642,7 +642,18 @@ fn a_profile_equal_on_the_text_side() {
         cache: tuned(30, 8),
     });
     assert_eq!(report.findings()[0].reason(), Some(&Reason::Differs));
-    assert_eq!(report.findings()[0].value(), &Shown::Unset);
+    // The structured side is shown by its keys, as `differences` shows it, never as unset.
+    assert!(matches!(report.findings()[0].value(), Shown::Fields(_)));
+    assert_eq!(
+        report.findings()[0].value().to_string(),
+        "{ttl: Duration(30s), size: u32(8)}"
+    );
+    let requiring = Profile::new().expecting("cache", Expect::Required).unwrap();
+    let report = requiring.verify(&Cached {
+        cache: tuned(30, 8),
+    });
+    assert!(report.is_met());
+    assert!(matches!(report.findings()[0].value(), Shown::Fields(_)));
 
     let wrote = Profile::new()
         .expecting("cache", Expect::Equal("false".into()))

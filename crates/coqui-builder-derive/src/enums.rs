@@ -702,6 +702,37 @@ fn tagged(
         }
     }
 
+    // ---- holds_none ----
+    let mut none_fields = Vec::new();
+    for (i, arm) in arms.iter().enumerate() {
+        match &arm.kind {
+            ArmKind::Unit => {}
+            ArmKind::Named(plans) => {
+                for p in plans.iter().filter(|p| !p.skipped()) {
+                    let slot = slot_name(i, &p.ident);
+                    let (key, ty) = (&p.key, &p.ty);
+                    none_fields.push(quote! {
+                        if (__arm.is_none() || __arm == ::core::option::Option::Some(#i))
+                            && *__name == *#key
+                        {
+                            return <_ as __cb::Fill<#ty>>::holds_none(&self.#slot, __rest);
+                        }
+                    });
+                }
+            }
+            ArmKind::Newtype(ty) => {
+                let slot = newtype_slot(i);
+                none_fields.push(quote! {
+                    if (__arm.is_none() || __arm == ::core::option::Option::Some(#i))
+                        && <_ as __cb::Fill<#ty>>::holds_none(&self.#slot, __at)
+                    {
+                        return true;
+                    }
+                });
+            }
+        }
+    }
+
     // ---- build ----
     let build_arms = arms.iter().enumerate().map(|(i, arm)| {
         let v = &arm.ident;
@@ -1089,6 +1120,16 @@ fn tagged(
                     #(#build_arms)*
                     _ => ::core::option::Option::None,
                 }
+            }
+
+            fn holds_none(&self, __at: &[__cb::Segment]) -> bool {
+                let ::core::option::Option::Some((__first, __rest)) = __at.split_first() else {
+                    return false;
+                };
+                let __name = __first.name();
+                let __arm = self.__arm.or(self.__default);
+                #(#none_fields)*
+                false
             }
 
             fn from_value(__value: #name) -> Self {

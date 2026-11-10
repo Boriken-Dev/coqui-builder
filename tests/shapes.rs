@@ -667,3 +667,24 @@ fn open_maps_of_leaves_and_of_groups_are_filled_key_by_key() {
     assert_eq!(paths(&p.build().unwrap_err()), ["hashed.x.host"]);
     assert!(Partial::<Maps>::new().set("sorted", "1").is_err());
 }
+
+// ---- a flattened member that repeats a key ----
+
+#[derive(Describe, Debug, Clone, PartialEq)]
+struct Twin {
+    a: u8,
+}
+
+#[derive(Describe, Debug, Clone, PartialEq)]
+struct Doubled {
+    a: u8,
+    #[map(flatten)]
+    twin: Twin,
+}
+
+#[cfg(debug_assertions)]
+#[test]
+#[should_panic(expected = "the key `a` is declared twice")]
+fn a_flattened_member_repeating_a_key_is_caught_when_the_description_is_built() {
+    let _ = Doubled::description();
+}

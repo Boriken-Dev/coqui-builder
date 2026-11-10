@@ -175,3 +175,64 @@ fn an_ordered_unit_enum_orders_by_declaration() {
     assert_eq!(ClientAuth::from_text("Optional"), Ok(ClientAuth::Optional));
     assert!(ClientAuth::choices().is_some());
 }
+
+#[derive(Leaf, Debug, Clone, Copy, PartialEq)]
+struct SocketMode(u32);
+
+impl fmt::Display for SocketMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "0o{:o}", self.0)
+    }
+}
+
+impl FromStr for SocketMode {
+    type Err = ();
+
+    fn from_str(text: &str) -> Result<SocketMode, ()> {
+        let digits = text.strip_prefix("0o").ok_or(())?;
+        u32::from_str_radix(digits, 8)
+            .map(SocketMode)
+            .map_err(|_| ())
+    }
+}
+
+#[derive(Describe, Debug, Clone, PartialEq)]
+struct Socket {
+    #[map(default = SocketMode(0o600))]
+    mode: SocketMode,
+}
+
+#[test]
+fn a_newtype_leaf_is_shown_with_its_type_and_its_own_text() {
+    use coqui_builder::Inspect;
+    let mut p = Partial::<Socket>::new();
+    p.set("mode", "0o660").unwrap();
+    let at: coqui_builder::KeyPath = "mode".parse().unwrap();
+    let shown = p.at(at.segments());
+    assert_eq!(shown.unwrap().to_string(), "SocketMode(0o660)");
+    assert_eq!(p.build().unwrap().mode, SocketMode(0o660));
+    assert_round_trip(&[SocketMode(0), SocketMode(0o660)]);
+}
+
+#[derive(Leaf, Debug, Clone, Copy, PartialEq)]
+struct Lossy(u8);
+
+impl fmt::Display for Lossy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("?")
+    }
+}
+
+impl FromStr for Lossy {
+    type Err = ();
+
+    fn from_str(text: &str) -> Result<Lossy, ()> {
+        text.parse().map(Lossy).map_err(|_| ())
+    }
+}
+
+#[test]
+#[should_panic(expected = "does not read back")]
+fn the_round_trip_helper_fails_on_a_type_whose_text_does_not_read_back() {
+    assert_round_trip(&[Lossy(5)]);
+}

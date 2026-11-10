@@ -97,7 +97,8 @@
       "name": "a flattened struct's keys sit beside the others",
       "item": "{derive} struct Inner { x: u8 } {derive} struct S { a: u8, #[map(flatten)] inner: Inner }",
       "guatiao": "accept",
-      "coqui_builder": "accept"
+      "coqui_builder": "accept",
+      "expect": {"kind": "group", "keys": ["a", "x"], "required": ["a", "x"]}
     },
     {
       "name": "deny_unknown_fields",
@@ -126,7 +127,8 @@
       "name": "a generic struct",
       "item": "{derive} struct S<T> { value: T }",
       "guatiao": "accept",
-      "coqui_builder": "accept"
+      "coqui_builder": "accept",
+      "expect": {"kind": "group", "keys": ["value"], "required": ["value"]}
     },
     {
       "name": "unit variants are a choice",
@@ -273,6 +275,12 @@
       "guatiao": "accept",
       "coqui_builder": "accept",
       "expect": {"kind": "group", "keys": ["fill"], "required": ["fill"]}
+    },
+    {
+      "name": "input belongs to a parts struct, not a settings type",
+      "item": "{derive} struct S { #[builder(input)] identity: String }",
+      "guatiao": "accept",
+      "coqui_builder": {"refuse": "`input` belongs to a parts struct"}
     },
     {
       "name": "stricter says which way a setting gets stricter",

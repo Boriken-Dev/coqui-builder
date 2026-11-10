@@ -235,6 +235,20 @@ fn switched_union(
     Some((gate.at().clone(), !text))
 }
 
+/// The subject's value at `key`: its text, or for an untagged enum on its structured arm the
+/// keys it holds there, else `unset`.
+fn shown_at(resolved: &Resolved<'_>, subject: &dyn Inspect, key: &KeyPath) -> Shown {
+    if let Some(datum) = subject.at(key.segments()) {
+        return Shown::One(datum);
+    }
+    match resolved.description().kind() {
+        Kind::Union(union) if subject.entries(key.segments()).is_some() => {
+            crate::non_default::structured_shown(union, resolved.field(), subject, key.segments())
+        }
+        _ => Shown::Unset,
+    }
+}
+
 fn present(subject: &dyn Inspect, at: &[Segment]) -> bool {
     subject.at(at).is_some() || subject.entries(at).is_some()
 }
@@ -337,7 +351,7 @@ fn evaluate(
     }
     if matches!(expect, Expect::Required | Expect::Absent) {
         let here = present(subject, key.segments());
-        let shown = subject.at(key.segments()).map_or(Shown::Unset, Shown::One);
+        let shown = shown_at(resolved, subject, key);
         let outcome = match (expect, here) {
             (Expect::Required, true) | (Expect::Absent, false) => Ok(()),
             (Expect::Required, false) => Err(Reason::Missing),
@@ -365,7 +379,7 @@ fn evaluate(
         && matches!(description.kind(), Kind::Union(_))
         && subject.entries(key.segments()).is_some();
     let value = datum.as_ref().map(|d| d.text().to_owned());
-    let shown = datum.map_or(Shown::Unset, Shown::One);
+    let shown = shown_at(resolved, subject, key);
     let none = resolved.field().and_then(|f| f.none.as_deref());
     // `None` for a setting that is not set, and for an optional holding its `none` text.
     let loosest = value.as_deref().is_none_or(|v| none == Some(v));

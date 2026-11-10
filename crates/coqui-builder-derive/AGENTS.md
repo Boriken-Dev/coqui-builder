@@ -37,7 +37,7 @@ hidden `coqui_builder::__private`.
 Refused with a sentence: a tuple struct of two or more fields, a unit struct, a union, a
 generic enum, a lifetime or const parameter, an untagged variant with named fields, a
 variant that carries fields in an enum without a tag, and a field whose type names the type
-it is in.
+it is in; the derive's header in `src/lib.rs` lists every refusal, by group.
 
 ### Untagged enums that hold a value
 
@@ -56,8 +56,10 @@ structured arm, fails the build of the enum, a compile error (E0080) whose messa
 apart with a tag`` (and, for the nested case, ``the structured arm of an untagged enum is a
 group, a list, a map or a tagged enum, not another untagged enum that holds a structured
 arm``). An arm that names the enum itself is refused like any self-reference. It is never a
-run-time error. Choices are the
-unit names when the enum has no other text arm.
+run-time error. Two more fail the same way: an arm that is an `Option` (``an untagged enum's
+arm holds a value; make the field that holds the enum optional instead``) and an enum with no
+unit variant and no single-value arm (``an untagged enum with one arm is that arm: use a
+newtype``). Choices are the unit names when the enum has no other text arm.
 
 ### `#[derive(Leaf)]`
 

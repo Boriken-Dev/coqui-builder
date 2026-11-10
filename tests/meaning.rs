@@ -616,6 +616,9 @@ mod case_13_a_flattened_struct_s_keys_sit_beside_the_others {
 
     pub fn check() {
         let d = <S as ::coqui_builder::Describe>::description();
+        assert_eq!(kind_name(&d), "group");
+        assert_eq!(keys(&d), vec!["a", "x"]);
+        assert_eq!(required(&d), vec!["a", "x"]);
     }
 }
 
@@ -691,6 +694,9 @@ mod case_17_a_generic_struct {
 
     pub fn check() {
         let d = <S::<u16> as ::coqui_builder::Describe>::description();
+        assert_eq!(kind_name(&d), "group");
+        assert_eq!(keys(&d), vec!["value"]);
+        assert_eq!(required(&d), vec!["value"]);
     }
 }
 
@@ -1066,7 +1072,7 @@ fn case_36_a_reserved_setter_name_is_renamed_and_the_key_stays() {
 
 #[rustfmt::skip]
 #[allow(dead_code, unused)]
-mod case_37_stricter_says_which_way_a_setting_gets_stricter {
+mod case_38_stricter_says_which_way_a_setting_gets_stricter {
     use super::*;
 
     #[derive(::coqui_builder::Describe)] struct S { #[builder(stricter = "lower")] timeout: u32, #[builder(stricter = "higher")] attempts: u32 }
@@ -1081,8 +1087,8 @@ mod case_37_stricter_says_which_way_a_setting_gets_stricter {
 }
 
 #[test]
-fn case_37_stricter_says_which_way_a_setting_gets_stricter() {
-    case_37_stricter_says_which_way_a_setting_gets_stricter::check();
+fn case_38_stricter_says_which_way_a_setting_gets_stricter() {
+    case_38_stricter_says_which_way_a_setting_gets_stricter::check();
 }
 
 // END GENERATED

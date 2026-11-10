@@ -16,10 +16,37 @@
 //! | enum with `#[map(tag = "k")]` | a group whose fields depend on the arm the tag names |
 //! | enum with `#[map(untagged)]` | text arms and at most one structured arm |
 //!
-//! A tuple struct of two or more fields, a unit struct, a union, a generic enum and a type that
-//! holds itself are refused with a sentence that says what to do instead. The spellings are
-//! the ones `guatiao`'s derives read, so a type can move between the two; the vectors in
-//! `tests/vectors/attributes.json` hold both to the same meaning.
+//! The spellings are the ones `guatiao`'s derives read, so a type can move between the two;
+//! the vectors in `tests/vectors/attributes.json` hold both to the same meaning.
+//!
+//! # Refused with a sentence
+//!
+//! Each refusal says what to do instead and never quotes the input.
+//!
+//! - A type: a union; a unit struct; a tuple struct of two or more fields, or with `#[map]` or
+//!   `#[schema]` on a field; a lifetime or const parameter; a generic enum; an enum with no
+//!   variant; a type that holds itself; `#[schema]` on a type; `deny_unknown_fields` on a
+//!   type without named fields or beside a `flatten` field; a transparent struct without
+//!   exactly one field that is not skipped, or with `#[map]` on it but `skip`.
+//! - Keys: two fields (or two variants, or two fields of an arm) that map to the same key; a
+//!   field stored under its enum's tag; `rename_all` with a rule that is not
+//!   `lowercase`, `snake_case`, `kebab-case` or `SCREAMING_SNAKE_CASE`; `tag` on a struct, or
+//!   with `untagged`; an enum without `tag` or `untagged` whose variants hold fields.
+//! - Variants: more than one `#[map(other)]`, one that holds no `String`, one that is renamed,
+//!   or one on an untagged enum or on a variant that is not a unit; `rename` on an untagged
+//!   variant that holds a value; an untagged variant with named fields or not holding exactly
+//!   one value; `flatten` or `#[map]` inside an arm.
+//! - Untagged arms, when the enum is compiled: more than one arm that is not a single value, a
+//!   structured arm that is itself an untagged enum holding one, an arm that is an `Option`,
+//!   and an enum with no unit variant and no single-value arm.
+//! - Field options: an unknown key of `#[map]`, `#[schema]` or `#[builder]`; `alias` and
+//!   `skip_serializing_if`; `flatten` beside any other option, on an `Option`, or on a type
+//!   without named fields; `skip` beside `rename` or `default`; `as_text` beside `with`; `with`
+//!   on an `Option`; `default` given twice, or on an `Option` without `none`; `none` beside
+//!   `with` or `as_text`, on a field that is not an `Option`, without `default = <expr>`, or
+//!   empty; `multiple_of` that is not above zero; `stricter` other than `"higher"` or
+//!   `"lower"`; an empty `setter`; a setter that is a name every builder has; `input`, which
+//!   is for a parts struct.
 
 #![forbid(unsafe_code)]
 

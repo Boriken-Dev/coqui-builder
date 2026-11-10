@@ -318,7 +318,9 @@ most one structured `Name(T)` (a group, list, map or tagged enum): see the deriv
 second structured arm fails the build of the enum.
 A struct may be generic over types; a generic enum, a lifetime, a tuple struct of two or
 more fields, a unit struct, a union, an untagged variant with named fields and a type that
-holds itself are refused with a sentence.
+holds itself are refused with a sentence (the derive's header lists every refusal). In an
+untagged enum an `Option` arm, and an enum with no unit variant and no single-value arm,
+fail the build of the enum (E0080).
 
 `#[derive(Leaf)]` on a unit-only enum reads and writes the variant names (`rename`,
 `rename_all`); on any other type it uses `Display` and `FromStr`. `#[leaf(name = "..")]`
@@ -370,13 +372,15 @@ Only `Env::new(prefix)` reads any: the variables of this process that start with
 - A `with` module cannot use a generic parameter of the struct it sits in.
 - `Partial` caches its type's description when it is made.
 - A profile made by `defaults` says nothing about the entries of an open map.
-- `Partial::overlay` of a `Partial::from(value)` carries the `None` of an optional only
-  where the optional has a `none` text; for any other optional, an earlier value stays.
+- `Partial::overlay` of a `Partial::from(value)` carries the `None` of an optional: with a
+  `none` text it lays that text over, without one it forgets what the target held. A `None`
+  at a list position is left alone, as clearing it would shift its neighbours.
 - The default of an open map or of a list of groups is built but not described: the
   description records defaults as texts of leaves and lists of leaves, so `non_defaults`
   of such a default lists its entries.
 - A `with` module is a text converter only; it declares no order, so `Within`,
   `AsStrictAs` and `NoStricterThan` cannot bind to its field.
-- Flattened fields are not checked for a key the outer struct also declares.
+- A flattened field that repeats a key of the outer struct panics when the description is
+  built, in a debug build (a debug assertion naming the key); a release build keeps both.
 - `Env` matches a variable to a key by reading its segments in lower case, with `_` as `-`,
   and as found; a field name that mixes `_` and `-` is not matched.

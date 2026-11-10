@@ -293,3 +293,98 @@ fn a_shared_key_reads_its_default_from_the_chosen_arm() {
     assert_eq!(p.at(&key).unwrap().text(), "9");
     assert_eq!(p.build().unwrap().pace, Pace::Slow { level: 9 });
 }
+
+// ---- an explicit None, and a step that is not a whole number of steps ----
+
+#[derive(Describe, Debug, Clone, PartialEq)]
+struct Optionals {
+    #[map(default)]
+    base: u8,
+    limit: Option<u32>,
+    #[map(default = Some(Duration::from_secs(30)), none = "never")]
+    wait: Option<Duration>,
+}
+
+#[test]
+fn overlaying_an_explicit_none_clears_what_the_target_holds() {
+    let mut target = Partial::<Optionals>::new();
+    target.set("limit", "5").unwrap();
+    target.set("wait", "10s").unwrap();
+    let mut later = Partial::from(Optionals {
+        base: 1,
+        limit: None,
+        wait: None,
+    });
+    later.set("base", "2").unwrap();
+    target.overlay(later);
+    let built = target.build().unwrap();
+    assert_eq!(
+        built.limit, None,
+        "no `none` text: the earlier value is forgotten"
+    );
+    assert_eq!(
+        built.wait, None,
+        "a `none` text: the earlier value is replaced"
+    );
+    assert_eq!(built.base, 2);
+}
+
+#[test]
+fn overlaying_a_set_option_still_replaces_and_an_unset_one_keeps() {
+    let mut target = Partial::<Optionals>::new();
+    target.set("limit", "5").unwrap();
+    let mut later = Partial::<Optionals>::new();
+    later.set("wait", "1s").unwrap();
+    target.overlay(later);
+    let built = target.build().unwrap();
+    assert_eq!(built.limit, Some(5));
+    assert_eq!(built.wait, Some(Duration::from_secs(1)));
+}
+
+#[derive(Describe, Debug, Clone, PartialEq)]
+struct Tuning {
+    ceiling: Option<u8>,
+}
+
+#[derive(Describe, Debug, Clone, PartialEq)]
+struct Nested {
+    tuning: Option<Tuning>,
+    #[map(default)]
+    names: Vec<String>,
+}
+
+#[test]
+fn an_explicit_none_below_a_group_and_a_group_that_is_none() {
+    let mut target = Partial::<Nested>::new();
+    target.set("tuning.ceiling", "9").unwrap();
+    let later = Partial::from(Nested {
+        tuning: Some(Tuning { ceiling: None }),
+        names: Vec::new(),
+    });
+    target.overlay(later);
+    assert_eq!(
+        target.build().unwrap().tuning,
+        Some(Tuning { ceiling: None })
+    );
+
+    let mut target = Partial::<Nested>::new();
+    target.set("tuning.ceiling", "9").unwrap();
+    target.overlay(Partial::from(Nested {
+        tuning: None,
+        names: Vec::new(),
+    }));
+    assert_eq!(target.build().unwrap().tuning, None);
+}
+
+#[derive(Describe, Debug, Clone, PartialEq)]
+struct Steps {
+    #[schema(multiple_of = 1)]
+    big: u128,
+}
+
+#[test]
+fn a_step_is_checked_past_the_range_of_a_64_bit_integer() {
+    let mut p = Partial::<Steps>::new();
+    p.set("big", "100000000000000000000").unwrap();
+    assert_eq!(p.build().unwrap().big, 100_000_000_000_000_000_000);
+}

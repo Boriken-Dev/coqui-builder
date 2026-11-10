@@ -308,6 +308,10 @@ impl FieldAttrs {
                         });
                     } else if meta.path.is_ident("setter") {
                         out.setter = Some(string(&meta)?);
+                    } else if meta.path.is_ident("input") {
+                        return Err(meta.error(
+                            "`input` belongs to a parts struct (`#[derive(Builder)]`): a                              settings type has settings only, and a value that is no text is                              an input of the parts struct that builds it",
+                        ));
                     } else {
                         return Err(meta.error(format!(
                             "unrecognised `#[builder(...)]` option on a field. \

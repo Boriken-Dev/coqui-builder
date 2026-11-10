@@ -340,6 +340,22 @@ fn group(
         }
     });
 
+    let none_arms = keyed.iter().map(|p| {
+        let ident = &p.ident;
+        let key = &p.key;
+        let ty = &p.ty;
+        quote!(#key => <_ as __cb::Fill<#ty>>::holds_none(&self.#ident, __rest),)
+    });
+    let none_flats = flats.iter().map(|p| {
+        let ident = &p.ident;
+        let ty = &p.ty;
+        quote! {
+            if <_ as __cb::Fill<#ty>>::holds_none(&self.#ident, __at) {
+                return true;
+            }
+        }
+    });
+
     // ---- set_default / from_value ----
     let all_idents: Vec<&Ident> = live.iter().map(|p| &p.ident).collect();
     let set_default = live.iter().map(|p| {
@@ -470,6 +486,21 @@ fn group(
         } else {
             let expr = p.field_expr();
             quote!(__fields.push(#expr);)
+        }
+    });
+    let duplicates = (!flats.is_empty()).then(|| {
+        quote! {
+            if ::core::cfg!(debug_assertions) {
+                for (__at, __field) in __fields.iter().enumerate() {
+                    if __fields[..__at].iter().any(|__o| __o.key == __field.key) {
+                        ::core::panic!(
+                            "`{}`: the key `{}` is declared twice, once by a flattened field",
+                            ::core::stringify!(#name),
+                            __field.key
+                        );
+                    }
+                }
+            }
         }
     });
     let deny = container.deny_unknown_fields.then(|| {
@@ -618,6 +649,19 @@ fn group(
                 })
             }
 
+            fn holds_none(&self, __at: &[__cb::Segment]) -> bool {
+                let ::core::option::Option::Some((__first, __rest)) = __at.split_first() else {
+                    return false;
+                };
+                match &*__first.name() {
+                    #(#none_arms)*
+                    _ => {
+                        #(#none_flats)*
+                        false
+                    }
+                }
+            }
+
             fn from_value(__value: #name #ty_g) -> Self {
                 #value_destructure
                 Self {
@@ -634,6 +678,7 @@ fn group(
                 let mut __fields: __cb::__private::Vec<__cb::describe::Field> =
                     __cb::__private::Vec::new();
                 #(#field_pushes)*
+                #duplicates
                 let mut __d = __cb::Description::group(__fields);
                 #deny
                 #doc

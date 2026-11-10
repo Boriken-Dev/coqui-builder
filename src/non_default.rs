@@ -513,6 +513,27 @@ enum Side {
     Structured,
 }
 
+/// What `side` holds on the structured arm of the untagged enum at `path`, shown as
+/// `Shown::Fields`: its keys below the enum, else the defaults the description states.
+pub(crate) fn structured_shown(
+    union: &Union,
+    field: Option<&Field>,
+    side: &dyn Inspect,
+    path: &[Segment],
+) -> Shown {
+    let mut out = Vec::new();
+    render(
+        union.structured(),
+        field,
+        Some(side),
+        &mut path.to_vec(),
+        &mut Vec::new(),
+        false,
+        &mut out,
+    );
+    Shown::Fields(out)
+}
+
 /// The leaves of a structured arm as `(key below the enum, datum)`: what `side` holds there,
 /// else the defaults the description states. A secret is marked as one.
 fn render(

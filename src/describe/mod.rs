@@ -276,7 +276,7 @@ impl Description {
         }
         if let (Some(step), Ok(x)) = (notes.multiple_of, text.parse::<f64>()) {
             let ratio = x / step;
-            let frac = (ratio - (ratio as i64) as f64).abs();
+            let frac = (ratio % 1.0).abs();
             if frac > 1e-9 && 1.0 - frac > 1e-9 {
                 return Err(Bound::NotAMultiple);
             }

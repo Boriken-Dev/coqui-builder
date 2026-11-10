@@ -58,8 +58,30 @@ pub(crate) fn expand(
             );
         }
     });
+    let optional = tys.iter().map(|ty| {
+        quote! {
+            ::core::assert!(
+                !<#ty as __cb::Describe>::OPTIONAL,
+                ::core::concat!(
+                    "`", ::core::stringify!(#name), "`: an untagged enum's arm holds a value;                      make the field that holds the enum optional instead"
+                )
+            );
+        }
+    });
+    let unit_count = names.len();
+    let text_arms = tys
+        .iter()
+        .map(|ty| quote!(+ (<#ty as __cb::Describe>::LEAF) as usize));
     let assertion = quote! {
         const _: () = {
+            #(#optional)*
+            let __texts = #unit_count #(#text_arms)*;
+            ::core::assert!(
+                __texts > 0,
+                ::core::concat!(
+                    "`", ::core::stringify!(#name), "`: an untagged enum with one arm is that                      arm: use a newtype"
+                )
+            );
             let __structured = 0usize #(#counted)*;
             ::core::assert!(
                 __structured <= 1,
@@ -165,6 +187,15 @@ pub(crate) fn expand(
                         __cb::Entries::Keys(__cb::__private::Vec::new())
                     })
                 });
+            }
+        }
+    });
+
+    let none_routes = held.iter().enumerate().map(|(i, h)| {
+        let (s, ty) = (slot(i), &h.ty);
+        quote! {
+            if !<#ty as __cb::Describe>::LEAF {
+                return <_ as __cb::Fill<#ty>>::holds_none(&self.#s, __at);
             }
         }
     });
@@ -461,6 +492,14 @@ pub(crate) fn expand(
                 }
                 __missing.push(::core::clone::Clone::clone(__at));
                 ::core::option::Option::None
+            }
+
+            fn holds_none(&self, __at: &[__cb::Segment]) -> bool {
+                if !self.__structured {
+                    return false;
+                }
+                #(#none_routes)*
+                false
             }
 
             fn from_value(__value: #name) -> Self {
