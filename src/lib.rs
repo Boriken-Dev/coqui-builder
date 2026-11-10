@@ -42,6 +42,8 @@ pub mod report;
 #[cfg(feature = "zeroize")]
 #[cfg_attr(docsrs, doc(cfg(feature = "zeroize")))]
 pub mod secret;
+#[cfg(feature = "serde")]
+mod serde;
 pub mod source;
 
 pub use builder::Configured;

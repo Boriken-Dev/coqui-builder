@@ -36,10 +36,13 @@ workspace = true
 [dependencies]
 coqui-builder-derive = { version = "=0.0.0-alpha.0", path = "crates/coqui-builder-derive", optional = true }
 zeroize = { version = "1.9.1", optional = true, default-features = false, features = ["alloc"] }
+serde = { version = "1.0.229", optional = true, default-features = false, features = ["alloc"] }
 
 [dev-dependencies]
 # Reads the shared vectors; never reached by a normal build.
 serde_json = "1"
+# Reads the TOML the serde tests parse; pinned to a release at least two weeks old.
+toml = "=1.1.8"
 
 [features]
 # `std` adds the items that need an operating system or its collections: `PathBuf`, `HashMap`
@@ -49,6 +52,7 @@ default = ["std"]
 std = []
 derive = ["dep:coqui-builder-derive"]
 zeroize = ["dep:zeroize"]
+serde = ["dep:serde"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -125,3 +129,7 @@ required-features = ["derive"]
 [[test]]
 name = "secret"
 required-features = ["zeroize", "derive"]
+
+[[test]]
+name = "serde_partial"
+required-features = ["serde", "derive"]

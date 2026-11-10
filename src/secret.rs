@@ -15,7 +15,8 @@
 //! - the text of a sensitive [`Datum`], when it drops;
 //! - the text a `Source` hands over for a sensitive place, once
 //!   [`Partial::fill_from`](crate::Partial::fill_from) has parsed it;
-//! - the values an `Env` holds, when it drops.
+//! - the values an `Env` holds, when it drops; and the texts a `Partial` read through serde
+//!   held, wherever they drop.
 //!
 //! What is not: a plain `String` under `#[schema(sensitive)]` (hold a `Secret<String>`), the
 //! text a caller passes to [`Partial::set`](crate::Partial::set), a copy the caller takes with

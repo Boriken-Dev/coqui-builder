@@ -827,6 +827,8 @@ pub fn coqui_builder::partial::Partial<T>::set_items<S: core::convert::AsRef<str
 pub fn coqui_builder::partial::Partial<T>::set_items_at(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
 impl<T: coqui_builder::describe::Describe> coqui_builder::partial::Partial<T>
 pub fn coqui_builder::partial::Partial<T>::fill_from(&mut self, &mut impl coqui_builder::source::Source) -> core::result::Result<coqui_builder::source::Unknown, coqui_builder::fill::FillError>
+impl<'de, T: coqui_builder::describe::Describe> serde_core::de::Deserialize<'de> for coqui_builder::partial::Partial<T>
+pub fn coqui_builder::partial::Partial<T>::deserialize<D: serde_core::de::Deserializer<'de>>(D) -> core::result::Result<coqui_builder::partial::Partial<T>, <D as serde_core::de::Deserializer>::Error>
 impl<T: coqui_builder::describe::Describe> coqui_builder::inspect::Inspect for coqui_builder::partial::Partial<T>
 pub fn coqui_builder::partial::Partial<T>::at(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::datum::Datum>
 pub fn coqui_builder::partial::Partial<T>::entries(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::inspect::Entries>
@@ -1364,6 +1366,8 @@ pub fn coqui_builder::partial::Partial<T>::set_items<S: core::convert::AsRef<str
 pub fn coqui_builder::partial::Partial<T>::set_items_at(&mut self, &[coqui_builder::path::Segment], &[alloc::string::String]) -> core::result::Result<(), coqui_builder::fill::FillError>
 impl<T: coqui_builder::describe::Describe> coqui_builder::partial::Partial<T>
 pub fn coqui_builder::partial::Partial<T>::fill_from(&mut self, &mut impl coqui_builder::source::Source) -> core::result::Result<coqui_builder::source::Unknown, coqui_builder::fill::FillError>
+impl<'de, T: coqui_builder::describe::Describe> serde_core::de::Deserialize<'de> for coqui_builder::partial::Partial<T>
+pub fn coqui_builder::partial::Partial<T>::deserialize<D: serde_core::de::Deserializer<'de>>(D) -> core::result::Result<coqui_builder::partial::Partial<T>, <D as serde_core::de::Deserializer>::Error>
 impl<T: coqui_builder::describe::Describe> coqui_builder::inspect::Inspect for coqui_builder::partial::Partial<T>
 pub fn coqui_builder::partial::Partial<T>::at(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::datum::Datum>
 pub fn coqui_builder::partial::Partial<T>::entries(&self, &[coqui_builder::path::Segment]) -> core::option::Option<coqui_builder::inspect::Entries>
