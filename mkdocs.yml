@@ -1,5 +1,5 @@
 site_name: coqui-builder
-site_description: Describe, fill, check and build any struct field by field: builders, partials and profiles, with no dependencies
+site_description: "Describe, fill, check and build any struct field by field: builders, partials and profiles, with no dependencies"
 site_url: https://boriken-dev.github.io/coqui-builder/
 repo_url: https://github.com/Boriken-Dev/coqui-builder
 repo_name: Boriken-Dev/coqui-builder
